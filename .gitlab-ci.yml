@@ -6,7 +6,8 @@ lint-job:
   stage: lint
   image: python:3.13
   script:
-    - pip install black isort pyright
+    - pip install black isort pyright poetry
+    - poetry install
     - black --check --diff . || FAILED=1
     - isort --check-only . || FAILED=1
     - pyright || FAILED=1
