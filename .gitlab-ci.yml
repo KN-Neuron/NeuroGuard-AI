@@ -10,7 +10,7 @@ lint-job:
     - poetry install
     - black --check --diff . || FAILED=1
     - isort --check-only . || FAILED=1
-    - pyright || FAILED=1
+    - poetry run pyright || FAILED=1
     - if [[ $FAILED = 1 ]]; then exit 1; fi
 
 unit-test-job:
