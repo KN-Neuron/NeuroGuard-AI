@@ -6,7 +6,7 @@ import torch
 
 SAMPLING_RATE = 251
 NUM_OF_CLASSES = 2
-NUM_OF_ELECTRODES = 32
+NUM_OF_ELECTRODES = 4
 STANDARD_BAND_TO_FREQUENCY_RANGE = {
     "delta": (1, 4),
     "theta": (4, 8),
