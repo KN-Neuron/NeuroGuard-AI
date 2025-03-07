@@ -20,7 +20,7 @@ lint-job:
     - echo $?
 
 unit-test-job:
-  stage: test
+  stage: lint
   image: python:3.12.7
   script:
     - pip install poetry
