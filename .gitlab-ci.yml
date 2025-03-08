@@ -4,17 +4,25 @@ stages:
 
 lint-job:
   stage: lint
-  image: python:3.13
+  image: python:3.12.7
   script:
-    - pip install black isort pyright
+    - pip install poetry black isort pyright
+    - echo $?
+    - poetry config installer.max-workers 1
+    - echo $?
+    - poetry install
+    - echo $?
     - black --check --diff . || FAILED=1
-    - isort --check-only . || FAILED=1
-    - pyright || FAILED=1
-    - if [[ $FAILED = 1 ]]; then exit 1; fi
+    - echo $?
+    - isort --profile=black --check-only . || FAILED=1
+    - echo $?
+    - poetry run pyright || FAILED=1
+    - echo $?
 
 unit-test-job:
   stage: lint
-  image: python:3.13
+  image: python:3.12.7
   script:
-    - pip install -r requirements.txt
-    - python -m unittest discover -s tests -p "test_*.py"
+    - pip install poetry
+    - poetry install
+    - poetry run python -m unittest discover -s tests -p "test_*.py"
