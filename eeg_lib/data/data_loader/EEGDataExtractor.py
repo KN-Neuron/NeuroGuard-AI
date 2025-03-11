@@ -91,14 +91,14 @@ class EEGDataExtractor:
             participant_id = item["participant_id"]
             epochs = item["epochs"]
             labels = item["labels"]
-            # Retrieve all epochs as a 3D np array: (n_epochs, n_channels, n_times)
             epoch_data = epochs.get_data()
 
-            for i, label in enumerate(labels):
+            for label in labels:
+                single_epoch_data = epoch_data[i]  
                 data.append(
                     {
                         "participant_id": participant_id,
-                        "epoch": epoch_data,
+                        "epoch": single_epoch_data,  
                         "label": label,
                     }
                 )
