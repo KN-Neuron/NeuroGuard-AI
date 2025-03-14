@@ -40,3 +40,18 @@ def set_seeds(seed: int = 42):
     """
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
+
+
+def get_device():
+    """
+    Determines the best available device for computation.
+
+    Returns:
+        str: The device to be used for computation. It returns "cuda" if a CUDA-enabled GPU is available,
+             "mps" if an Apple Silicon GPU is available, and "cpu" if neither is available.
+    """
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.mps.is_available():
+        return "mps"
+    return "cpu"
