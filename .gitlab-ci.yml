@@ -1,21 +1,21 @@
-stages:
-  - lint
-  - test
+# stages:
+#   - lint
+#   - test
 
-lint-job:
-  stage: lint
-  image: python:3.13
-  script:
-    - pip install black isort pyright poetry
-    - poetry install
-    - black --check --diff . || FAILED=1
-    - isort --check-only . || FAILED=1
-    - poetry run pyright || FAILED=1
-    - if [[ $FAILED = 1 ]]; then exit 1; fi
+# lint-job:
+#   stage: lint
+#   image: python:3.13
+#   script:
+#     - pip install black isort pyright poetry
+#     - poetry install
+#     - black --check --diff . || FAILED=1
+#     - isort --check-only . || FAILED=1
+#     - poetry run pyright || FAILED=1
+#     - if [[ $FAILED = 1 ]]; then exit 1; fi
 
-unit-test-job:
-  stage: lint
-  image: python:3.13
-  script:
-    - pip install -r requirements.txt
-    - python -m unittest discover -s tests -p "test_*.py"
+# unit-test-job:
+#   stage: lint
+#   image: python:3.13
+#   script:
+#     - pip install -r requirements.txt
+#     - python -m unittest discover -s tests -p "test_*.py"

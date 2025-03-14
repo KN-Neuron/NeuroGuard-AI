@@ -177,3 +177,4 @@ pyrightconfig.json
 
 # Data for training
 data/*.csv
+data/*.fif

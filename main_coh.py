@@ -92,7 +92,6 @@ if __name__ == "__main__":
     ax.set_ylabel("Accuracy")
     ax.set_title("Accuracy for each classifier per different number of participants")
     ax.set_xticks(x + width, names)
-    ax.legend(loc="upper left", nco(40
     plt.savefig("results_coh.png", dpi=300)
 
     plt.show()

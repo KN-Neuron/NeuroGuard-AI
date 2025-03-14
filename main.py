@@ -2,6 +2,7 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
+from pandas import read_csv
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
@@ -11,27 +12,42 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+from itertools import chain
 
-from src.load_data import get_data
+from src.load_data import extract_avg_features
 
 if __name__ == "__main__":
     total_accuracies = []
 
-    # n is the number of participants
-    for n in range(2, 7):
-        Xs, ys = [], []
+    X_train, X_test = [], []
+    y_train, y_test = [], []
+    
+    # They show when one class end for simpler access
+    train_markers, test_markers = [], []
+
+    # n is the index of participant
+    for n in range(2, 4):
+        # i is session number
+        marker_train = 0
         for i in range(1, 4):
-            X_tmp, y_tmp = get_data(list(range(2, 2 + n)), i)
-            Xs.append(X_tmp)
-            ys.append(y_tmp)
+            data = read_csv(
+                f"data/subject_{str(n).zfill(2)}_session_0{i}.csv"
+            ).to_numpy()
 
-        X = np.vstack(Xs)
-        y = np.hstack(ys)
+            # let 3rd session be our test data
+            X_, y_ = extract_avg_features(data, n)
+            if i == 3:
+                X_test.extend(X_)
+                y_test.extend(y_)
+                test_markers.append(len(X_))
+            else:
+                marker_train += len(X_)
+                X_train.extend(X_)
+                y_train.extend(y_)
+                
+        train_markers.append(marker_train)
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.33, random_state=42
-        )
-
+    for n in range(2, 13):
         classificators = [
             KNeighborsClassifier(),
             LogisticRegression(max_iter=100),
@@ -52,18 +68,29 @@ if __name__ == "__main__":
         ]
         test_results = []
 
+        X_train_, X_test_ = X_train[:int(np.cumsum(train_markers[:n]))], X_test[:int(np.cumsum(test_markers[:n]))]
+        y_train_, y_test_ = y_train[:int(np.cumsum(train_markers[:n]))], y_test[:int(np.cumsum(test_markers[:n]))]
+        
+        y_train_ = np.array(y_train_)
+        print(y_train_)
+
+        # print(y_train[:int(np.cumsum(train_markers[:n-1]))])
+        # print(y_test[:int(np.cumsum(test_markers[:n-1])))
+        print(np.array(X_train_).shape)
+
         print(f'{"Name":^20} | {"Train accuracy":^15} | {"Test accuracy":^15}')
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
             for classificator, name in zip(classificators, names):
-                classificator.fit(X_train, y_train)
+                print(list(set(y_train_)), list(set(y_test_)))
+                classificator.fit(X_train_, y_train_)
 
-                preds = classificator.predict(X_train)
-                train_accuracy = accuracy_score(y_train, preds)
+                preds = classificator.predict(X_train_)
+                train_accuracy = accuracy_score(y_train_, preds)
 
-                preds = classificator.predict(X_test)
-                test_accuracy = accuracy_score(y_test, preds)
+                preds = classificator.predict(X_test_)
+                test_accuracy = accuracy_score(y_test_, preds)
                 test_results.append(round(test_accuracy, 2))
 
                 print(f"{name:>20} | {train_accuracy:^15.2f} | {test_accuracy:^15.2f}")
