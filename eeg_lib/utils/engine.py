@@ -1,3 +1,5 @@
+from matplotlib import pyplot as plt
+from sklearn.manifold import TSNE
 from eeg_lib.utils.helpers import get_device
 
 from typing import Optional

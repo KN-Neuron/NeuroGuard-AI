@@ -7,6 +7,7 @@ from typing import Optional
 from datetime import datetime
 import os
 
+
 def accuracy_fn(y_true: torch.Tensor, y_pred: torch.Tensor):
     """Calculates accuracy between truth labels and predictions.
 
@@ -62,9 +63,10 @@ def get_device():
         return "mps"
     return "cpu"
 
-def create_writer(experiment_name: str, 
-                  model_name: str, 
-                  extra: Optional[str]=None) -> SummaryWriter:
+
+def create_writer(
+    experiment_name: str, model_name: str, extra: Optional[str] = None
+) -> SummaryWriter:
     """Creates a SummaryWriter instance saving to a specific log_dir.
 
     log_dir is a combination of runs/timestamp/experiment_name/model_name/extra.
@@ -91,10 +93,14 @@ def create_writer(experiment_name: str,
     timestamp = datetime.now().strftime("%Y-%m-%d")
 
     if extra:
-        log_dir = os.path.join(f"{RESULTS_FOLDER}/runs", timestamp, experiment_name, model_name, extra)
+        log_dir = os.path.join(
+            f"{RESULTS_FOLDER}/runs", timestamp, experiment_name, model_name, extra
+        )
     else:
-        log_dir = os.path.join(f"{RESULTS_FOLDER}/runs", timestamp, experiment_name, model_name)
-        
+        log_dir = os.path.join(
+            f"{RESULTS_FOLDER}/runs", timestamp, experiment_name, model_name
+        )
+
     print(f"[INFO] Created SummaryWriter, saving to: {log_dir}...")
     return SummaryWriter(log_dir=log_dir)
 
@@ -117,4 +123,3 @@ def split_train_test(eeg_df, test_size=0.2, random_state=0):
     print("Test set participants:", test_participants)
 
     return train_df, test_df, train_participants, test_participants
-

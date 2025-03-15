@@ -8,6 +8,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
 from eeg_lib.commons.constant import NUM_WORKERS
 
+
 class EEGNetColorDataset(Dataset):
     """
     A simple Dataset for EEG data stored in a DataFrame.
