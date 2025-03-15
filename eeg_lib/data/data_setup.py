@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
-from eeg_lib.commons.constant import NUM_WORKERS, DATASETS_FOLDER
+from eeg_lib.commons.constant import NUM_WORKERS
 
 
 def create_dataloaders(

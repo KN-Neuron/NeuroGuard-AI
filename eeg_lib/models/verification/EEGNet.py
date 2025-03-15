@@ -55,12 +55,11 @@ class EEGNetEmbeddingModel(nn.Module):
         """
         super(EEGNetEmbeddingModel, self).__init__()
 
-        # Calculate the flattened size after convolution and pooling layers.
+        # calc flattened size after convolution and pooling layers.
         flattened_size = (
             num_time_points // (pool_kernel_size_1 * pool_kernel_size_2)
         ) * num_filters_second_layer
 
-        # Block 1: Temporal Convolutional Filters.
         self.temporal_conv_block = nn.Sequential(
             nn.Conv2d(
                 in_channels=1,
@@ -72,7 +71,6 @@ class EEGNetEmbeddingModel(nn.Module):
             nn.BatchNorm2d(num_filters_first_layer),
         )
 
-        # Block 2: Spatial Filters (Depthwise Convolution).
         self.spatial_conv_block = nn.Sequential(
             nn.Conv2d(
                 in_channels=num_filters_first_layer,
@@ -87,7 +85,6 @@ class EEGNetEmbeddingModel(nn.Module):
             nn.Dropout(p=dropout_rate),
         )
 
-        # Block 3: Separable Convolution (Separable + Pointwise Convolution).
         self.separable_conv_block = nn.Sequential(
             nn.Conv2d(
                 in_channels=depth_multiplier * num_filters_first_layer,
@@ -113,10 +110,8 @@ class EEGNetEmbeddingModel(nn.Module):
 
         self.embedding_layer = nn.Linear(flattened_size, embedding_dimension)
 
-        # Classification layer mapping the embedding to class logits.
         self.classification_layer = nn.Linear(embedding_dimension, num_classes)
 
-        # Apply max-norm constraints.
         self.apply_max_norm_to_layer(self.spatial_conv_block[0], max_norm_depthwise)
         self.apply_max_norm_to_layer(self.classification_layer, max_norm_linear)
 
