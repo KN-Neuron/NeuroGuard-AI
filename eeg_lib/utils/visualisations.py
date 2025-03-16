@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-
+from sklearn.manifold import TSNE
+import numpy as np
 
 def plot_predictions(
     train_data, train_labels, test_data, test_labels, predictions=None
@@ -52,3 +53,54 @@ def plot_loss_curves(results: dict):
     plt.title("Accuracy")
     plt.xlabel("Epochs")
     plt.legend()
+
+
+def plot_loss_and_accuracy(history):
+    """Plot training curves with proper metrics for authentication systems"""
+    plt.figure(figsize=(15, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(history['train_loss'], label='Train Loss')
+    plt.plot(history['val_loss'], label='Validation Loss')
+    plt.title('Triplet Margin Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(history['train_acc'], label='Train Accuracy')
+    plt.plot(history['val_acc'], label='Validation Accuracy')
+    plt.title('Authentication Accuracy')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_embedding_tsne(embeddings, user_ids, title="t-SNE of EEG Embeddings"):
+    """Create t-SNE visualization of embeddings to check clustering by user"""
+    # Apply t-SNE
+    tsne = TSNE(n_components=2, random_state=42)
+    embeddings_2d = tsne.fit_transform(embeddings)
+
+    # Plot
+    plt.figure(figsize=(12, 10))
+    unique_users = np.unique(user_ids)
+
+    for user in unique_users:
+        user_mask = user_ids == user
+        plt.scatter(
+            embeddings_2d[user_mask, 0],
+            embeddings_2d[user_mask, 1],
+            label=f"User {user}",
+            alpha=0.7
+        )
+
+    plt.title(title)
+    plt.xlabel("t-SNE Component 1")
+    plt.ylabel("t-SNE Component 2")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+    plt.show()
