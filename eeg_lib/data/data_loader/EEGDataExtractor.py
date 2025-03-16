@@ -95,10 +95,11 @@ class EEGDataExtractor:
             epoch_data = epochs.get_data()
 
             for i, label in enumerate(labels):
+                single_epoch_data = epoch_data[i]  
                 data.append(
                     {
                         "participant_id": participant_id,
-                        "epoch": epoch_data,
+                        "epoch": single_epoch_data,  
                         "label": label,
                     }
                 )
