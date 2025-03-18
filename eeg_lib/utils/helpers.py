@@ -69,18 +69,15 @@ def prepare_eeg_data(eeg_df, test_size=0.2, val_size=0.1, random_state=42):
         Dictionary containing train, validation, and test data and labels,
         along with participant mapping information
     """
-    # Get unique participant IDs
+
     participant_ids = eeg_df['participant_id'].unique()
 
-    # Split participants into train, validation, and test sets
-    # First split into train+val and test
     train_val_ids, test_ids = train_test_split(
         participant_ids,
         test_size=test_size,
         random_state=random_state
     )
 
-    # Then split train+val into train and validation
     train_ids, val_ids = train_test_split(
         train_val_ids,
         test_size=val_size / (1 - test_size),
@@ -91,26 +88,21 @@ def prepare_eeg_data(eeg_df, test_size=0.2, val_size=0.1, random_state=42):
     print(f"Validation participants: {len(val_ids)}")
     print(f"Test participants: {len(test_ids)}")
 
-    # Extract data for each set
     train_data = eeg_df[eeg_df['participant_id'].isin(train_ids)]
     val_data = eeg_df[eeg_df['participant_id'].isin(val_ids)]
     test_data = eeg_df[eeg_df['participant_id'].isin(test_ids)]
 
-    # Process the data for each set
     X_train, y_train, user_train = process_eeg_set(train_data)
     X_val, y_val, user_val = process_eeg_set(val_data)
     X_test, y_test, user_test = process_eeg_set(test_data)
 
-    # Create label and user ID mappings
     label_mapping = {label: idx for idx, label in enumerate(sorted(eeg_df['label'].unique()))}
     user_mapping = {user_id: idx for idx, user_id in enumerate(sorted(participant_ids))}
 
-    # Convert string labels to integers
     y_train_idx = np.array([label_mapping[label] for label in y_train])
     y_val_idx = np.array([label_mapping[label] for label in y_val])
     y_test_idx = np.array([label_mapping[label] for label in y_test])
 
-    # Convert user IDs to integers
     user_train_idx = np.array([user_mapping[user] for user in user_train])
     user_val_idx = np.array([user_mapping[user] for user in user_val])
     user_test_idx = np.array([user_mapping[user] for user in user_test])
@@ -428,3 +420,129 @@ def load_model(model_class, model_path, num_channels, num_samples, embedding_siz
 
     return model
 
+
+def train_epoch(model, data_loader, optimizer, loss_fn, device="cuda" if torch.cuda.is_available() else "cpu"):
+    model.train()
+    model.to(device)
+    running_loss = 0.0
+
+    for batch in data_loader:
+        anchor = batch['anchor'].to(device)
+        positive = batch['positive'].to(device)
+        negative = batch['negative'].to(device)
+
+        optimizer.zero_grad()
+
+        anchor_emb = model(anchor)
+        positive_emb = model(positive)
+        negative_emb = model(negative)
+
+        loss = loss_fn(anchor_emb, positive_emb, negative_emb)
+
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+
+    return running_loss / len(data_loader)
+
+def validate_epoch(model, data_loader, loss_fn, device="cuda" if torch.cuda.is_available() else "cpu"):
+    model.eval()
+    model.to(device)
+    running_loss = 0.0
+
+    with torch.no_grad():  # No gradient computation during validation
+        for batch in data_loader:
+            anchor = batch['anchor'].to(device)
+            positive = batch['positive'].to(device)
+            negative = batch['negative'].to(device)
+
+            # Forward pass
+            anchor_emb = model(anchor)
+            positive_emb = model(positive)
+            negative_emb = model(negative)
+
+            # Calculate loss
+            loss = loss_fn(anchor_emb, positive_emb, negative_emb)
+
+            running_loss += loss.item()
+
+    return running_loss / len(data_loader)
+
+
+def extract_embeddings(model, data_loader, device="cuda" if torch.cuda.is_available() else "cpu"):
+    """
+    Extract embeddings from a trained EEG model.
+
+    Parameters:
+    -----------
+    model : torch.nn.Module
+        Trained EEGNet or FBCNet model
+    data_loader : torch.utils.data.DataLoader
+        DataLoader containing EEG data and labels
+    device : str
+        Device to run inference on ('cuda' or 'cpu')
+
+    Returns:
+    --------
+    dict
+        Dictionary containing embeddings, participant IDs, and labels
+    """
+    # Set model to evaluation mode
+    model.eval()
+    model.to(device)
+
+    # Lists to store embeddings and metadata
+    all_embeddings = []
+    all_participant_ids = []
+    all_labels = []
+
+    # Extract embeddings without computing gradients
+    with torch.no_grad():
+        for batch in data_loader:
+            # Handle different data loader formats
+            if isinstance(batch, dict):
+                # For triplet data loaders
+                X = batch['anchor']
+                participant_id = batch.get('participant_id', None)
+                label = batch.get('label', None)
+            elif len(batch) == 2:
+                # Standard (X, y) format
+                X, participant_id = batch
+                label = None
+            elif len(batch) == 3:
+                # (X, participant_id, label) format
+                X, participant_id, label = batch
+
+            # Move data to device
+            X = X.to(device)
+
+            # Get embeddings from model
+            embeddings = model(X)
+
+            # Move data back to CPU and convert to numpy
+            all_embeddings.append(embeddings.cpu().numpy())
+
+            if participant_id is not None:
+                all_participant_ids.append(participant_id.cpu().numpy())
+            if label is not None:
+                all_labels.append(label.cpu().numpy())
+
+    # Concatenate all batches
+    embeddings = np.vstack(all_embeddings)
+
+    if len(all_participant_ids) > 0:
+        participant_ids = np.concatenate(all_participant_ids)
+    else:
+        participant_ids = np.array([0] * len(embeddings))
+
+    if len(all_labels) > 0:
+        labels = np.concatenate(all_labels)
+    else:
+        labels = np.array(["unknown"] * len(embeddings))
+
+    return {
+        'embeddings': embeddings,
+        'participant_ids': participant_ids,
+        'labels': labels
+    }
