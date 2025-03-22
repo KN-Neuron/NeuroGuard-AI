@@ -34,9 +34,12 @@ class EmbeddingEEGNet(nn.Module):
             padding="valid"
         )
 
+        self.batchNorm2 = nn.BatchNorm2d(depth * cnn_temp_filt)
+
         self.avgPool1 = nn.AvgPool2d((1,pool1s))
 
         self.dropout1 = nn.Dropout(dropout1)
+
         self.cnnSeparable = nn.Conv2d(
             in_channels=depth*cnn_temp_filt,
             out_channels=cnn_separable_size,
@@ -44,13 +47,16 @@ class EmbeddingEEGNet(nn.Module):
             padding="same"
         )
 
-        self.batchNorm2 = nn.BatchNorm2d(cnn_separable_size)
+        self.batchNorm3 = nn.BatchNorm2d(cnn_separable_size)
+
+
 
         self.avgPool2 = nn.AvgPool2d((1,pool2s))
         self.dropout2 = nn.Dropout(dropout2)
         self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(in_features=(depth * cnn_temp_filt * (channels - depth + 1) * (timesteps // (pool1s * pool2s))),
-                             out_features=embedd_dim)
+        self.fc1 = nn.Linear(
+            in_features=(cnn_separable_size * (channels - depth + 1) * (timesteps // (pool1s * pool2s))),
+            out_features=embedd_dim)
 
         self.elu = nn.ELU()
 
@@ -64,7 +70,7 @@ class EmbeddingEEGNet(nn.Module):
         x = self.avgPool1(x)
         x = self.dropout1(x)
         x = self.cnnSeparable(x)
-        x = self.batchNorm2(x)
+        x = self.batchNorm3(x)
         x = self.elu(x)
         x = self.avgPool2(x)
         x = self.dropout2(x)
