@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 def plot_predictions(
     train_data, train_labels, test_data, test_labels, predictions=None
@@ -52,3 +52,40 @@ def plot_loss_curves(results: dict):
     plt.title("Accuracy")
     plt.xlabel("Epochs")
     plt.legend()
+
+
+def plot_tsne(embeddings,
+              cmap,
+              labels,
+              handles=None,
+              figsize=(10, 8),
+              alpha=1.0,
+              title=None,
+              xlabel=None,
+              ylabel=None,
+              centroids=None,
+              test_embeddings=None,
+              test_labels=None):
+    plt.figure(figsize=(figsize[0], figsize[1]))
+    scatter_train = plt.scatter(embeddings[:, 0], embeddings[:, 1], c=labels, cmap=cmap, alpha=alpha)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    if centroids is not None:
+        centroid_vals = np.array(list(centroids.values()))
+        centroid_keys = np.array(list(centroids.keys()))
+        scatter_centroid = plt.scatter(centroid_vals[:, 0], centroid_vals[:, 1], c=centroid_keys, marker="X", s=300,
+                               cmap=cmap, edgecolors="black")
+
+    if test_embeddings is not None:
+        scatter_test = plt.scatter(test_embeddings[:, 0],
+                                   test_embeddings[:, 1],
+                                   c=test_labels,
+                                   cmap=cmap,
+                                   marker="o",
+                                   s=50)
+    plt.legend(handles=handles, bbox_to_anchor=(1.05, 1), loc="upper left")
+    plt.tight_layout()
+    plt.show()
+
