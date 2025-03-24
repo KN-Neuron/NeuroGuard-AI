@@ -16,10 +16,21 @@ class SimilarityCentroidsVerifier(object):
 
     def euclidean_distance(self,a, b):
         return np.linalg.norm(a-b)
+
     def compute_similarity(self, embedding, label):
         centroid = self.centroids[label]
         distance = self.euclidean_distance(embedding, centroid)
         return distance
+
+    def classify_embedding(self, embedding):
+        min_distance = None
+        min_label = None
+        for label in np.unique(self.labels):
+            distance = self.compute_similarity(embedding, label)
+            if min_distance is None or distance < min_distance:
+                min_distance = distance
+                min_label = label
+        return min_label, min_distance
 
     def get_avg_distance(self):
         avg_distances = {}

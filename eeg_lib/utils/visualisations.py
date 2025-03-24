@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 def plot_predictions(
     train_data, train_labels, test_data, test_labels, predictions=None
@@ -65,7 +66,8 @@ def plot_tsne(embeddings,
               ylabel=None,
               centroids=None,
               test_embeddings=None,
-              test_labels=None):
+              test_labels=None,
+              save=False):
     plt.figure(figsize=(figsize[0], figsize[1]))
     scatter_train = plt.scatter(embeddings[:, 0], embeddings[:, 1], c=labels, cmap=cmap, alpha=alpha)
     plt.title(title)
@@ -87,5 +89,10 @@ def plot_tsne(embeddings,
                                    s=50)
     plt.legend(handles=handles, bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.tight_layout()
+
+    if save:
+        save_path = os.path.join("images", title + ".png")
+        plt.savefig(save_path, format="png", dpi=300)
+
     plt.show()
 
