@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 
@@ -14,7 +13,7 @@ def train_eegnet(model: nn.Module, train_loader: DataLoader, optimizer: torch.op
             (anchor, positive, negative).
         optimizer (torch.optim.Optimizer): Optimizer to be used for training.
         device (torch.device): Device to run training on.
-        triplet_loss (Callable): Triplet loss function to be used.
+        triplet_loss: Triplet loss function to be used.
         num_epochs (int, optional): Number of epochs to train for. Defaults to 30.
 
     Returns:
@@ -29,10 +28,7 @@ def train_eegnet(model: nn.Module, train_loader: DataLoader, optimizer: torch.op
         model.train()
         epoch_loss = 0.0
 
-        for batch in train_loader:
-            anchor = batch['anchor'].to(device)
-            positive = batch['positive'].to(device)
-            negative = batch['negative'].to(device)
+        for anchor, positive, negative in train_loader:
 
             anchor_emb = model(anchor)
             positive_emb = model(positive)

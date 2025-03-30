@@ -56,24 +56,14 @@ def plot_loss_curves(results: dict):
     plt.legend()
 
 
-def plot_loss_and_accuracy(history):
+def plot_loss(history):
     """Plot training curves with proper metrics for authentication systems"""
     plt.figure(figsize=(15, 5))
 
-    plt.subplot(1, 2, 1)
     plt.plot(history['train_loss'], label='Train Loss')
-    plt.plot(history['val_loss'], label='Validation Loss')
     plt.title('Triplet Margin Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.legend()
-
-    plt.subplot(1, 2, 2)
-    plt.plot(history['train_acc'], label='Train Accuracy')
-    plt.plot(history['val_acc'], label='Validation Accuracy')
-    plt.title('Authentication Accuracy')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
     plt.legend()
 
     plt.tight_layout()
