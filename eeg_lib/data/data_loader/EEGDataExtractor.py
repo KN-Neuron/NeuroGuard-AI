@@ -5,6 +5,8 @@ from typing import Optional, Tuple, List, Dict, Any
 import mne
 import pandas as pd
 
+mne.set_log_level("ERROR")
+
 
 class EEGDataExtractor:
     def __init__(
