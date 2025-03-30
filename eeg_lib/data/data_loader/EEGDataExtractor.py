@@ -16,6 +16,7 @@ class EEGDataExtractor:
         baseline: Optional[Tuple] = None,
         tmin: float = 0,
         tmax: float = 3,
+        resample_freq: float | None = None,
     ):
         """
         Parameters:
@@ -26,6 +27,7 @@ class EEGDataExtractor:
             baseline (tuple): Baseline correction period.
             tmin (float): Start time (in seconds) relative to the event.
             tmax (float): End time (in seconds) relative to the event.
+            resample_freq (float): Resample frequency.
         """
         self.data_dir = data_dir
         self.lfreq = lfreq
@@ -34,6 +36,7 @@ class EEGDataExtractor:
         self.baseline = baseline
         self.tmin = tmin
         self.tmax = tmax
+        self.resample_freq = resample_freq
 
     def _read_from_dir(self):
         """Returns a list of .fif files in the data directory."""
@@ -56,6 +59,8 @@ class EEGDataExtractor:
             eeg.apply_function(lambda x: x * 10**-6)
             eeg.filter(l_freq=self.lfreq, h_freq=self.hfreq)
             eeg.notch_filter(self.notch_filter)
+            if self.resample_freq:
+                eeg.resample(self.resample_freq, npad="auto")
             events, event_id = mne.events_from_annotations(eeg)
             if not event_id:
                 print(f"No events found in file {file}")
@@ -95,11 +100,11 @@ class EEGDataExtractor:
             epoch_data = epochs.get_data()
 
             for i, label in enumerate(labels):
-                single_epoch_data = epoch_data[i]  
+                single_epoch_data = epoch_data[i]
                 data.append(
                     {
                         "participant_id": participant_id,
-                        "epoch": single_epoch_data,  
+                        "epoch": single_epoch_data,
                         "label": label,
                     }
                 )
