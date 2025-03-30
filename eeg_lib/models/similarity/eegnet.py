@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules.module import T
-from eeg_lib.utils.helpers import train_epoch, validate_epoch
 
 class EEGNet(nn.Module):
     """
@@ -56,52 +54,3 @@ class EEGNet(nn.Module):
         # L2 normalization makes the embedding lie on a unit hypersphere
         x = F.normalize(x, p=2, dim=1)
         return x
-
-
-    def train_eegnet(self, eegnet_loaders, eegnet_optimizer, device, triplet_loss, eegnet_history, num_epochs = 30):
-        for epoch in range(num_epochs):
-
-            train_loss = train_epoch(
-                self,
-                eegnet_loaders['triplet']['train'],
-                eegnet_optimizer,
-                triplet_loss
-            )
-
-            val_loss = validate_epoch(
-                self,
-                eegnet_loaders['triplet']['val'],
-                triplet_loss
-            )
-
-            correct = 0
-            total = 0
-            self.eval()
-            with torch.no_grad():
-                for batch in eegnet_loaders['triplet']['val']:
-                    anchor = batch['anchor'].to(device)
-                    positive = batch['positive'].to(device)
-                    negative = batch['negative'].to(device)
-
-                    # Forward pass
-                    anchor_emb = self(anchor)
-                    positive_emb = self(positive)
-                    negative_emb = self(negative)
-
-                    # Calculate distances
-                    pos_dist = F.pairwise_distance(anchor_emb, positive_emb)
-                    neg_dist = F.pairwise_distance(anchor_emb, negative_emb)
-
-                    # Count correct predictions (where positive sample is closer than negative)
-                    correct += torch.sum(pos_dist < neg_dist).item()
-                    total += anchor_emb.size(0)
-
-            val_acc = correct / total if total > 0 else 0
-
-            # Update history
-            eegnet_history['train_loss'].append(train_loss)
-            eegnet_history['val_loss'].append(val_loss)
-            eegnet_history['train_acc'].append(0.0)  # We don't calculate training accuracy here
-            eegnet_history['val_acc'].append(val_acc)
-
-            print(f"Epoch {epoch + 1}/{num_epochs}, EEGNet Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")

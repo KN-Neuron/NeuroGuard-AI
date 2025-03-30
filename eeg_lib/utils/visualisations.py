@@ -96,7 +96,6 @@ def plot_embeddings(embeddings_data, model_name="EEGNet", perplexity=30, color_b
     color_based : bool
         Whether to color points by color label instead of participant ID
     """
-    # Apply t-SNE to reduce embeddings to 2D for visualization
     embeddings = embeddings_data['embeddings']
     participant_ids = embeddings_data['participant_ids']
     labels = embeddings_data['labels']
