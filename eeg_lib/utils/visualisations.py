@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
-
+from sklearn.manifold import TSNE
+import numpy as np
+import seaborn as sns
 
 def plot_predictions(
     train_data, train_labels, test_data, test_labels, predictions=None
@@ -52,3 +54,81 @@ def plot_loss_curves(results: dict):
     plt.title("Accuracy")
     plt.xlabel("Epochs")
     plt.legend()
+
+
+def plot_loss(history):
+    """Plot training curves with proper metrics for authentication systems"""
+    plt.figure(figsize=(15, 5))
+
+    plt.plot(history['train_loss'], label='Train Loss')
+    plt.title('Triplet Margin Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_embeddings(embeddings_data, model_name="EEGNet", perplexity=30, color_based=False):
+    """
+    Visualize embeddings using t-SNE.
+
+    Parameters:
+    -----------
+    embeddings_data : dict
+        Dictionary containing embeddings, participant_ids, and labels
+        from extract_embeddings function
+    model_name : str
+        Name of the model for plot title
+    perplexity : int
+        Perplexity parameter for t-SNE (typical values: 5-50)
+    color_based : bool
+        Whether to color points by color label instead of participant ID
+    """
+    embeddings = embeddings_data['embeddings']
+    participant_ids = embeddings_data['participant_ids']
+    labels = embeddings_data['labels']
+
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    embeddings_2d = tsne.fit_transform(embeddings)
+
+    # Create a DataFrame for easier plotting
+    df = pd.DataFrame({
+        'tsne_1': embeddings_2d[:, 0],
+        'tsne_2': embeddings_2d[:, 1],
+        'participant_id': participant_ids,
+        'label': labels
+    })
+
+    # Create visualization
+    plt.figure(figsize=(12, 10))
+
+    if color_based:
+        # Color by label (red, green, blue, etc.)
+        sns.scatterplot(
+            x='tsne_1', y='tsne_2',
+            hue='label',
+            data=df,
+            palette='viridis',
+            s=50, alpha=0.7
+        )
+        plt.title(f'{model_name} Embeddings by Color')
+    else:
+        # Color by participant ID
+        sns.scatterplot(
+            x='tsne_1', y='tsne_2',
+            hue='participant_id',
+            data=df,
+            palette='tab20',
+            s=50, alpha=0.7
+        )
+        plt.title(f'{model_name} Embeddings by Participant')
+
+    plt.xlabel('t-SNE Component 1')
+    plt.ylabel('t-SNE Component 2')
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+    plt.show()
+
+    return embeddings_2d
