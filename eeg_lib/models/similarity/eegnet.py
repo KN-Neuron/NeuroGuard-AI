@@ -1,56 +1,153 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-class EEGNet(nn.Module):
+# Model Grzesia zeby sprawdic czy to problem w modelu faktycznie
+class EEGNetEmbeddingModel(nn.Module):
     """
-    A simplified implementation of EEGNet:
-    - Temporal convolution with fixed kernel size to capture time-domain features.
-    - Depthwise convolution (one filter per channel group) to model spatial relationships.
-    - Batch normalization, ELU activation, average pooling and dropout.
-    - Final fully connected layer outputs an embedding of given size.
-    The output embedding is L2-normalized.
+    EEGNet model adapted for generating embeddings from EEG data for verification tasks.
+
+    This model is based on the EEGNet architecture (EEGNET-8,2 variant) and is modified to output
+    a fixed-size embedding vector (default 32 dimensions) that can be used to compare EEG signals.
+    It also includes a classification head for auxiliary training if desired.
+
+    Attributes:
+        temporal_conv_block (nn.Sequential): The block performing temporal convolution.
+        spatial_conv_block (nn.Sequential): The block performing spatial (depthwise) convolution.
+        separable_conv_block (nn.Sequential): The block performing separable convolution (separable + pointwise).
+        flatten_layer (nn.Flatten): Flattens the convolution output.
+        embedding_layer (nn.Linear): Linear layer to produce the final embedding.
+        classification_layer (nn.Linear): Linear layer that maps embeddings to class logits.
     """
 
-    def __init__(self, num_channels, num_samples, embedding_size=32):
-        super(EEGNet, self).__init__()
-        # Ensure kernel size doesn't exceed channel count
-        temporal_kernel_size = (1, 64)
-        spatial_kernel_size = (num_channels, 1)  # Adaptive kernel size
+    def __init__(
+        self,
+        num_channels: int = 4,
+        num_classes: int = 4,
+        num_time_points: int = 751,
+        temporal_kernel_size: int = 32,
+        num_filters_first_layer: int = 16,
+        num_filters_second_layer: int = 32,
+        depth_multiplier: int = 2,
+        pool_kernel_size_1: int = 8,
+        pool_kernel_size_2: int = 16,
+        dropout_rate: float = 0.5,
+        max_norm_depthwise: float = 1.0,
+        max_norm_linear: float = 0.25,
+        embedding_dimension: int = 32,
+    ):
+        """
+        Initialize the EEGNetEmbeddingModel.
 
-        self.temporal_conv = nn.Conv2d(1, 8, kernel_size=temporal_kernel_size, padding=(0, 32), bias=False)
-        self.depthwise_conv = nn.Conv2d(8, 16, kernel_size=spatial_kernel_size, groups=8, bias=False)
-        self.batchnorm = nn.BatchNorm2d(16)
-        self.elu = nn.ELU()
-        self.avgpool = nn.AvgPool2d(kernel_size=(1, 4))
-        self.dropout = nn.Dropout(0.25)
+        Args:
+            num_channels (int): Number of EEG channels (default 4).
+            num_classes (int): Number of output classes for classification (default 4).
+            num_time_points (int): Number of time points per EEG epoch (default 751).
+            temporal_kernel_size (int): Kernel size for temporal convolution (default 32).
+            num_filters_first_layer (int): Number of filters for the first convolutional layer (default 16).
+            num_filters_second_layer (int): Number of filters for the second convolutional block (default 32).
+            depth_multiplier (int): Multiplier for depthwise convolution (default 2).
+            pool_kernel_size_1 (int): Pooling kernel size in the first pooling layer (default 8).
+            pool_kernel_size_2 (int): Pooling kernel size in the second pooling layer (default 16).
+            dropout_rate (float): Dropout rate (default 0.5).
+            max_norm_depthwise (float): Maximum norm value for depthwise convolution weights (default 1.0).
+            max_norm_linear (float): Maximum norm value for linear layer weights (default 0.25).
+            embedding_dimension (int): Dimensionality of the embedding vector (default 32).
+        """
+        super(EEGNetEmbeddingModel, self).__init__()
 
-        # Determine the flattened feature size dynamically
-        self.feature_dim = self._get_flattened_size(num_channels, num_samples)
-        self.fc = nn.Linear(self.feature_dim, embedding_size)
+        # calc flattened size after convolution and pooling layers.
+        flattened_size = (
+            num_time_points // (pool_kernel_size_1 * pool_kernel_size_2)
+        ) * num_filters_second_layer
 
-    def _get_flattened_size(self, num_channels, num_samples):
-        with torch.no_grad():
-            dummy_input = torch.zeros(1, 1, num_channels, num_samples)
-            x = self.temporal_conv(dummy_input)
-            x = self.depthwise_conv(x)
-            x = self.batchnorm(x)
-            x = self.elu(x)
-            x = self.avgpool(x)
-            x = self.dropout(x)
-            return x.view(1, -1).shape[1]
+        self.temporal_conv_block = nn.Sequential(
+            nn.Conv2d(
+                in_channels=1,
+                out_channels=num_filters_first_layer,
+                kernel_size=(1, temporal_kernel_size),
+                padding="same",
+                bias=False,
+            ),
+            nn.BatchNorm2d(num_filters_first_layer),
+        )
 
-    def forward(self, x):
-        # x shape: (B, channels, samples)
-        x = x.unsqueeze(1)  # new shape: (B, 1, channels, samples)
-        x = self.temporal_conv(x)
-        x = self.depthwise_conv(x)
-        x = self.batchnorm(x)
-        x = self.elu(x)
-        x = self.avgpool(x)
-        x = self.dropout(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        # L2 normalization makes the embedding lie on a unit hypersphere
-        x = F.normalize(x, p=2, dim=1)
-        return x
+        self.spatial_conv_block = nn.Sequential(
+            nn.Conv2d(
+                in_channels=num_filters_first_layer,
+                out_channels=depth_multiplier * num_filters_first_layer,
+                kernel_size=(num_channels, 1),
+                groups=num_filters_first_layer,
+                bias=False,
+            ),
+            nn.BatchNorm2d(depth_multiplier * num_filters_first_layer),
+            nn.ELU(),
+            nn.AvgPool2d(kernel_size=(1, pool_kernel_size_1)),
+            nn.Dropout(p=dropout_rate),
+        )
+
+        self.separable_conv_block = nn.Sequential(
+            nn.Conv2d(
+                in_channels=depth_multiplier * num_filters_first_layer,
+                out_channels=num_filters_second_layer,
+                kernel_size=(1, 16),
+                groups=num_filters_second_layer,
+                bias=False,
+                padding="same",
+            ),
+            nn.Conv2d(
+                in_channels=num_filters_second_layer,
+                out_channels=num_filters_second_layer,
+                kernel_size=1,
+                bias=False,
+            ),
+            nn.BatchNorm2d(num_filters_second_layer),
+            nn.ELU(),
+            nn.AvgPool2d(kernel_size=(1, pool_kernel_size_2)),
+            nn.Dropout(p=dropout_rate),
+        )
+
+        self.flatten_layer = nn.Flatten()
+
+        self.embedding_layer = nn.Linear(flattened_size, embedding_dimension)
+
+        self.classification_layer = nn.Linear(embedding_dimension, num_classes)
+
+        self.apply_max_norm_to_layer(self.spatial_conv_block[0], max_norm_depthwise)
+        self.apply_max_norm_to_layer(self.classification_layer, max_norm_linear)
+
+    def apply_max_norm_to_layer(self, layer: nn.Module, max_norm_value: float):
+        """
+        Apply a max-norm constraint to the weights of a given layer.
+
+        Args:
+            layer (nn.Module): The layer to which the max-norm constraint will be applied.
+            max_norm_value (float): The maximum allowed norm for the weights.
+        """
+        for name, param in layer.named_parameters():
+            if "weight" in name:
+                param.data = torch.renorm(
+                    param.data, p=2, dim=0, maxnorm=max_norm_value
+                )
+
+    def forward(self, input_tensor: torch.Tensor):
+        """
+        Forward pass through the EEGNetEmbeddingModel.
+
+        Args:
+            input_tensor (torch.Tensor): Input tensor of shape
+                (batch_size, 1, num_channels, num_time_points).
+
+        Returns:
+            tuple:
+                - embedding_vector (torch.Tensor): The output embedding vector of shape
+                  (batch_size, embedding_dimension) for each input.
+                - classification_logits (torch.Tensor): The classification logits of shape
+                  (batch_size, num_classes) for each input.
+        """
+        x = self.temporal_conv_block(input_tensor)
+        x = self.spatial_conv_block(x)
+        x = self.separable_conv_block(x)
+        x = self.flatten_layer(x)
+        embedding_vector = self.embedding_layer(x)
+        classification_logits = self.classification_layer(embedding_vector)
+        return embedding_vector, classification_logits

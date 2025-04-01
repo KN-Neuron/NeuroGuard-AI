@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import numpy as np
-import seaborn as sns
+#import seaborn as sns
 
 def plot_predictions(
     train_data, train_labels, test_data, test_labels, predictions=None
