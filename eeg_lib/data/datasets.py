@@ -71,19 +71,21 @@ class CohDatasetKolory_Triplets(Dataset):
         positive_idx = torch.where(self.y == label)[0]
         negative_idx = torch.where(self.y != label)[0]
         
-        positive = self.X[positive_idx[torch.randperm(len(positive_idx))[0]]]
-        negative = self.X[negative_idx[torch.randperm(len(negative_idx))[0]]]
+        positive = self.X[positive_idx[torch.randint(len(positive_idx), (1,)).item()]]
+        negative = self.X[negative_idx[torch.randint(len(negative_idx), (1,)).item()]]
         
         return anchor, positive, negative
 
 class CohDatasetKolory_Pairs(Dataset):
-    def __init__(self, directory: str):
+    def __init__(self, directory: str, model):
         super().__init__()
-
+        self.model = model
+        
         self.X, self.y = _compute_or_load_coherence(directory)
 
         self.num_classes = len(self.y[0])
         self.input_size = self.X[0].shape[0]
+        
 
     def __len__(self):
         return len(self.y)

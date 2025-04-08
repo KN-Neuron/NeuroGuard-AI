@@ -4,11 +4,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-def contrastive_loss(x1, x2, y, margin=1.0):
-    dist = torch.norm(x1 - x2, p=2, dim=1)
-    loss = (1 - y) * dist.pow(2) + y * torch.clamp(margin - dist, min=0).pow(2)
-    return loss.mean()
-
 
 class BasicModel(nn.Module):
     def __init__(self, input_size=240, num_classes=32, pair_type_per_class: int = 10):
@@ -112,32 +107,6 @@ class BasicModel(nn.Module):
                 running_loss += batch_loss.item()
 
             print(epoch, running_loss / len(train_loader))
-
-    def _train_step(self, batch):
-        """Single training step"""
-        inputs, labels = batch
-        inputs, labels = inputs.to(self.device), labels.to(self.device)
-
-        # Generate triplets
-        anchors, positives, negatives = self._create_eeg_triplets(inputs, labels)
-
-        # Get embeddings
-        anchor_emb = self(anchors, return_embeddings=True)
-        positive_emb = self(positives, return_embeddings=True)
-        negative_emb = self(negatives, return_embeddings=True)
-
-        loss = self.embedding_loss(anchor_emb, positive_emb, negative_emb)
-
-        # Optional classification loss
-        # preds = self(inputs, return_embeddings=False)
-        # loss += self.classification_loss(preds, labels)
-
-        # Backprop
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return loss.item()
 
     def evaluate(self, dataloader):
         """Validation evaluation"""
