@@ -2,9 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 
-from eeg_lib.data.datasets import CohDatasetKolory
+def contrastive_loss(x1, x2, y, margin=1.0):
+    dist = torch.norm(x1 - x2, p=2, dim=1)
+    loss = (1 - y) * dist.pow(2) + y * torch.clamp(margin - dist, min=0).pow(2)
+    return loss.mean()
 
 
 class BasicModel(nn.Module):
@@ -14,21 +17,28 @@ class BasicModel(nn.Module):
 
         self.embedding_net = nn.Sequential(
             nn.Linear(input_size, 240),
-            nn.Sigmoid(),
-            nn.Linear(240, 240),
-            nn.Sigmoid(),
-            nn.Linear(240, 240),
-            nn.Sigmoid(),
-            nn.Linear(240, 240),
+            nn.ELU(),
+            nn.Linear(240, 960),
+            nn.ELU(),
+            nn.Linear(960, 960),
+            nn.ELU(),
+            nn.Linear(960, 960),
+            nn.ELU(),
+            nn.Linear(960, 960),
+            nn.ELU(),
+            nn.Linear(960, 960),
+            nn.ELU(),
+            nn.Linear(960, 240),
+            nn.Tanh()
         )
 
         self.classifier_layer = nn.Linear(240, num_classes)
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.embedding_loss = nn.TripletMarginLoss(
-            margin=0.5,
-            p=2,
-        )
+        # self.embedding_loss = nn.TripletMarginWithDistanceLoss(
+        #     margin=0.5, distance_function=lambda x, y: 1 - F.cosine_similarity(x, y)
+        # )
+        self.embedding_loss = nn.HingeEmbeddingLoss(margin=.1)
         self.classification_loss = nn.CrossEntropyLoss()
         self.optimizer = None
 
@@ -56,10 +66,52 @@ class BasicModel(nn.Module):
             self.train()
             running_loss = 0.0
 
-            for batch in train_loader:
-                running_loss += self._train_step(batch)
+            # for anchor, positive, negative in train_loader:
+            #     anchor = anchor.to(self.device)
+            #     positive = positive.to(self.device)
+            #     negative = negative.to(self.device)
 
-            print(running_loss / len(train_loader))
+            #     anchor_emb = self.embedding_net(anchor)
+            #     positive_emb = self.embedding_net(positive)
+            #     negative_emb = self.embedding_net(negative)
+
+            #     # Compute losses
+            #     triplet_loss = self.embedding_loss(
+            #         anchor_emb, positive_emb, negative_emb
+            #     )
+            #     running_loss += triplet_loss
+
+            #     self.optimizer.zero_grad()
+            #     triplet_loss.backward()
+            #     self.optimizer.step()
+
+            for anchor, pair, target, label in train_loader:
+                batch_loss = 0
+                anchor = anchor.to(self.device)
+                pair = pair.to(self.device)
+                target = target.to(self.device)
+                label = label.to(self.device)
+
+                # Embedding Loss
+                anchor_emb = self.embedding_net(anchor)
+                pair_emb = self.embedding_net(pair)
+                distances = torch.norm(anchor_emb - pair_emb, p=2, dim=1)
+                # hinge_loss = self.embedding_loss(anchor_emb, pair_emb, target)
+                hinge_loss = self.embedding_loss(distances, target)
+                batch_loss += hinge_loss
+                
+                # Classification Loss
+                classification = self.classifier_layer(anchor_emb)
+                classification_loss = self.classification_loss(classification, label)
+                batch_loss += 0.4*classification_loss
+
+                self.optimizer.zero_grad()
+                batch_loss.backward()
+                self.optimizer.step()
+                
+                running_loss += batch_loss.item()
+
+            print(epoch, running_loss / len(train_loader))
 
     def _train_step(self, batch):
         """Single training step"""
@@ -86,36 +138,6 @@ class BasicModel(nn.Module):
         self.optimizer.step()
 
         return loss.item()
-
-    def _create_eeg_triplets(self, inputs: torch.Tensor, labels: torch.Tensor):
-        anchors, positives, negatives = [], [], []
-
-        for lbl in torch.unique(labels):
-            class_idx = torch.where(labels == lbl)[0]
-            other_idx = torch.where(labels != lbl)[0]
-
-            if len(class_idx) < 2 or len(other_idx) < 1:
-                continue
-
-            # Create multiple triplets per class
-            for _ in range(self.pair_type_per_class):
-                # Random anchor and positive
-                a, p = torch.randperm(len(class_idx))[:2]
-                anchor = inputs[class_idx[a]]
-                positive = inputs[class_idx[p]]
-
-                # Hard negative - closest different class sample
-                with torch.no_grad():
-                    anchor_emb = self(anchor.unsqueeze(0), return_embeddings=True)
-                    other_embs = self(inputs[other_idx], return_embeddings=True)
-                    dists = torch.cdist(anchor_emb, other_embs).squeeze()
-                    hard_neg_idx = torch.argmin(dists)
-
-                anchors.append(anchor)
-                positives.append(positive)
-                negatives.append(inputs[other_idx[hard_neg_idx]])
-
-        return torch.stack(anchors), torch.stack(positives), torch.stack(negatives)
 
     def evaluate(self, dataloader):
         """Validation evaluation"""
@@ -145,7 +167,7 @@ class BasicModel(nn.Module):
         embeddings, targets = [], []
 
         with torch.no_grad():
-            for inputs, labels in dataloader:
+            for inputs, _, _, labels in dataloader:
                 emb = self(inputs.to(self.device), return_embeddings=True)
 
                 embeddings.append(emb.cpu())
@@ -154,7 +176,7 @@ class BasicModel(nn.Module):
         embeddings = torch.cat(embeddings)
         targets = torch.argmax(torch.cat(targets), dim=1)
 
-        X = TSNE(n_components=2).fit_transform(embeddings, targets)
+        X = LDA(n_components=2).fit_transform(embeddings, targets)
 
         for y in torch.unique(targets):
             plt.scatter(X[:, 0][targets == y], X[:, 1][targets == y])
