@@ -77,9 +77,8 @@ class CohDatasetKolory_Triplets(Dataset):
         return anchor, positive, negative
 
 class CohDatasetKolory_Pairs(Dataset):
-    def __init__(self, directory: str, model):
+    def __init__(self, directory: str):
         super().__init__()
-        self.model = model
         
         self.X, self.y = _compute_or_load_coherence(directory)
 

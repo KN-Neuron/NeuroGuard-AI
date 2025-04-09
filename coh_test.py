@@ -8,7 +8,7 @@ from eeg_lib.data.datasets import CohDatasetKolory, CohDatasetKolory_Triplets, C
 from eeg_lib.models.similarity.coherence_model import BasicModel
 
 
-dataset = CohDatasetKolory_Pairs("datasets")
+dataset = CohDatasetKolory("datasets")
 
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
@@ -17,7 +17,7 @@ train_dataset, val_dataset = random_split(
     dataset,
     (train_size, val_size),
 )
-train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=256*2, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False)
 
 
@@ -26,7 +26,7 @@ model = BasicModel(input_size=dataset.input_size, num_classes=dataset.num_classe
 # model.load_state_dict(torch.load("coh_model.pth", weights_only=True, map_location=torch.device("cuda")))
 # model.to(torch.device("cuda"))
 
-model.train_model(train_loader, val_loader=val_loader, lr=.001, epochs=10)
+model.train_model(train_loader, val_loader=val_loader, lr=.001, epochs=100)
 
 model.visualize_embeddings(val_loader)
 
