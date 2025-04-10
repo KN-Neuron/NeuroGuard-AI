@@ -37,10 +37,24 @@ def _compute_or_load_coherence(directory: str) -> tuple[torch.Tensor, torch.Tens
 
 
 class CohDatasetKolory(Dataset):
-    def __init__(self, directory: str):
+    def __init__(
+        self,
+        directory: str,
+        persons_left: int | None = None,
+        reversed_persons: bool = False,
+    ):
         super().__init__()
 
         self.X, self.y = _compute_or_load_coherence(directory)
+
+        if not reversed_persons:
+            inds = self.y[:, -persons_left:].sum(dim=1) == 0
+            self.y = self.y[inds, :-persons_left]
+        else:
+            inds = self.y[:, -persons_left:].sum(dim=1) != 0
+            self.y = self.y[inds, -persons_left:]
+
+        self.X = self.X[inds]
 
         self.num_classes = len(self.y[0])
         self.input_size = self.X[0].shape[0]
@@ -50,54 +64,3 @@ class CohDatasetKolory(Dataset):
 
     def __getitem__(self, index):
         return self.X[index], self.y[index]
-
-
-class CohDatasetKolory_Triplets(Dataset):
-    def __init__(self, directory: str):
-        super().__init__()
-
-        self.X, self.y = _compute_or_load_coherence(directory)
-
-        self.num_classes = len(self.y[0])
-        self.input_size = self.X[0].shape[0]
-
-    def __len__(self):
-        return len(self.y)
-
-    def __getitem__(self, index):
-        anchor = self.X[index]
-        label = self.y[index]
-
-        positive_idx = torch.where(self.y == label)[0]
-        negative_idx = torch.where(self.y != label)[0]
-        
-        positive = self.X[positive_idx[torch.randint(len(positive_idx), (1,)).item()]]
-        negative = self.X[negative_idx[torch.randint(len(negative_idx), (1,)).item()]]
-        
-        return anchor, positive, negative
-
-class CohDatasetKolory_Pairs(Dataset):
-    def __init__(self, directory: str):
-        super().__init__()
-        
-        self.X, self.y = _compute_or_load_coherence(directory)
-
-        self.num_classes = len(self.y[0])
-        self.input_size = self.X[0].shape[0]
-        
-
-    def __len__(self):
-        return len(self.y)
-
-    def __getitem__(self, index):
-        anchor = self.X[index]
-        label = self.y[index]
-
-        if torch.rand((1,)) > .5:
-            positive_idx = torch.where(self.y == label)[0]
-            positive = self.X[positive_idx[torch.randint(len(positive_idx), (1,)).item()]]
-            return anchor, positive, 1, label
-        else:
-            negative_idx = torch.where(self.y != label)[0]            
-            negative = self.X[negative_idx[torch.randint(len(negative_idx), (1,)).item()]]            
-            return anchor, negative, -1, label

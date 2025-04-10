@@ -1,3 +1,4 @@
+from typing import DefaultDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,23 +8,22 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class BasicModel(nn.Module):
-    def __init__(self, input_size=240, num_classes=32, pair_type_per_class: int = 10):
+    def __init__(self, input_size=240, num_classes=32):
         super(BasicModel, self).__init__()
-        self.pair_type_per_class = pair_type_per_class
 
         self.embedding_net = nn.Sequential(
             nn.Linear(input_size, 240),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(240, 960),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(960, 960),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(960, 960),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(960, 960),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(960, 960),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(960, 240),
         )
 
@@ -114,15 +114,29 @@ class BasicModel(nn.Module):
 
             # Positive
             distances = -torch.sum(embeddings[positive_idx] * anchor, dim=1)
-            return_positives[ind] = embeddings[positive_idx][torch.argmax(distances)]
+            if len(distances):
+                return_positives[ind] = embeddings[positive_idx][
+                    torch.argmax(distances)
+                ]
+            else:
+                print(negative_idx)
+                print(label)
 
             # Negative
             distances = -torch.sum(embeddings[negative_idx] * anchor, dim=1)
-            return_negatives[ind] = embeddings[negative_idx][torch.argmin(distances)]
+            if len(distances):
+                return_negatives[ind] = embeddings[negative_idx][
+                    torch.argmin(distances)
+                ]
+            else:
+                print(negative_idx)
+                print(label)
 
         return (embeddings, return_positives, return_negatives, labels)
 
-    def evaluate(self, data_loader: DataLoader) -> tuple[float, float, float]:
+    def evaluate(
+        self, data_loader: DataLoader, skip_classification: bool = True
+    ) -> tuple[float, float, float]:
         self.eval()
         running_loss = 0.0
         running_triplet_loss = 0.0
@@ -134,8 +148,13 @@ class BasicModel(nn.Module):
 
                 # Calculate losses
                 triplet_loss = self.embedding_loss(anchors, positives, negatives)
-                classification = self.classifier_layer(anchors)
-                classification_loss = self.classification_loss(classification, labels)
+                if skip_classification:
+                    classification_loss = torch.tensor((0,), dtype=torch.float64, device=self.device)
+                else:
+                    classification = self.classifier_layer(anchors)
+                    classification_loss = self.classification_loss(
+                        classification, labels
+                    )
                 batch_loss = triplet_loss + classification_loss
 
                 running_loss += batch_loss.item()
@@ -166,8 +185,12 @@ class BasicModel(nn.Module):
 
         embeddings = torch.cat(embeddings)
         targets = torch.argmax(torch.cat(targets), dim=1)
+        
+        # avg_distances = DefaultDict(list)
+        # for embedding in embeddings:
+            # if label
 
-        X = LDA(n_components=2).fit_transform(embeddings, targets)
+        X = PCA(n_components=2).fit_transform(embeddings, targets)
 
         for y in torch.unique(targets):
             plt.scatter(X[:, 0][targets == y], X[:, 1][targets == y])
