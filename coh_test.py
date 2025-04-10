@@ -23,10 +23,10 @@ val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False)
 
 model = BasicModel(input_size=dataset.input_size, num_classes=dataset.num_classes, pair_type_per_class=3)
 
-# model.load_state_dict(torch.load("coh_model.pth", weights_only=True, map_location=torch.device("cuda")))
+# model.load_state_dict(torch.load("coh_model2.pth", weights_only=True, map_location=torch.device("cuda")))
 # model.to(torch.device("cuda"))
 
-model.train_model(train_loader, val_loader=val_loader, lr=.001, epochs=100)
+model.train_model(train_loader, val_loader=val_loader, lr=.0005, epochs=100)
 
 model.visualize_embeddings(val_loader)
 
