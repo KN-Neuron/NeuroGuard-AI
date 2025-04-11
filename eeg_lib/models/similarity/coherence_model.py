@@ -8,39 +8,53 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class BasicModel(nn.Module):
-    def __init__(self, input_size=240, num_classes=32):
+    def __init__(self, input_size=240, num_classes=32, loss_relation=0.8):
         super(BasicModel, self).__init__()
+        self.loss_relation = loss_relation
 
-        self.embedding_net = nn.Sequential(
+        self.embedding_net_1 = nn.Sequential(
             nn.Linear(input_size, 240),
-            nn.ReLU(),
+            nn.ELU(),
             nn.Linear(240, 960),
-            nn.ReLU(),
+            nn.ELU(),
             nn.Linear(960, 960),
-            nn.ReLU(),
-            nn.Linear(960, 960),
-            nn.ReLU(),
-            nn.Linear(960, 960),
-            nn.ReLU(),
-            nn.Linear(960, 960),
-            nn.ReLU(),
-            nn.Linear(960, 240),
+            nn.ELU(),
+            nn.Linear(960, 640),
+            nn.ELU(),
+            nn.Linear(640, 320),
+            nn.ELU(),
+            nn.Linear(320, 240),
+            nn.ELU(),
+        )
+
+        self.embedding_net_2 = nn.Sequential(
+            nn.Linear(240, 128),
+            nn.ELU(),
+            nn.Linear(128, 128),
+            nn.ELU(),
+            nn.Linear(128, 128),
+            nn.ELU(),
+            nn.Linear(128, 128),
         )
 
         self.classifier_layer = nn.Sequential(
-            nn.Linear(240, num_classes),
+            nn.Linear(128, num_classes),
         )
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.embedding_loss = nn.TripletMarginWithDistanceLoss(
-            distance_function=lambda x, y: 1 - torch.sum(x * y, dim=1), swap=True
+            swap=True,
+            distance_function=lambda x, y: 1 - F.cosine_similarity(x, y),
+            margin=.5,
         )
-        self.classification_loss = nn.CrossEntropyLoss()
+        self.classification_loss = nn.CrossEntropyLoss(label_smoothing=0.1)
         self.optimizer = None
 
     def forward(self, x, return_embeddings=False):
-        embeddings = self.embedding_net(x)
-        embeddings = F.normalize(x, p=2, dim=1)
+        partial_embeddings = self.embedding_net_1(x)
+
+        embeddings = self.embedding_net_2(partial_embeddings + x)
+        embeddings = F.normalize(embeddings, p=2, dim=1)
 
         return embeddings if return_embeddings else self.classifier_layer(embeddings)
 
@@ -68,12 +82,12 @@ class BasicModel(nn.Module):
                 # Embedding Loss
                 anchors, positives, negatives, labels = self.get_triplets(batch)
                 triplet_loss = self.embedding_loss(anchors, positives, negatives)
-                batch_loss += triplet_loss
+                batch_loss += self.loss_relation * triplet_loss
 
                 # Classification Loss
                 classification = self.classifier_layer(anchors)
                 classification_loss = self.classification_loss(classification, labels)
-                batch_loss += classification_loss
+                batch_loss += (1 - self.loss_relation) * classification_loss
 
                 self.optimizer.zero_grad()
                 batch_loss.backward()
@@ -97,14 +111,14 @@ class BasicModel(nn.Module):
             writer.add_scalar("Triplet_Loss/val", val_hinge_loss, epoch)
             writer.add_scalar("Classification_Loss/val", val_class_loss, epoch)
 
-            print(epoch, avg_loss, val_loss)
+            print(f"{epoch:3}: {avg_loss:5.3f} {val_loss:5.3f}")
 
     def get_triplets(self, batch) -> torch.Tensor:
         X, labels = batch
         X = X.to(self.device)
         labels = labels.to(self.device)
 
-        embeddings = self.embedding_net(X)
+        embeddings = self(X, return_embeddings=True)
         return_positives = torch.empty_like(embeddings, device=self.device)
         return_negatives = torch.empty_like(embeddings, device=self.device)
 
@@ -113,7 +127,9 @@ class BasicModel(nn.Module):
             negative_idx = torch.where(labels != label)[0]
 
             # Positive
-            distances = -torch.sum(embeddings[positive_idx] * anchor, dim=1)
+            distances = 1 - F.cosine_similarity(
+                embeddings[positive_idx], anchor, dim=1
+            )
             if len(distances):
                 return_positives[ind] = embeddings[positive_idx][
                     torch.argmax(distances)
@@ -123,7 +139,9 @@ class BasicModel(nn.Module):
                 print(label)
 
             # Negative
-            distances = -torch.sum(embeddings[negative_idx] * anchor, dim=1)
+            distances = 1 - F.cosine_similarity(
+                embeddings[negative_idx], anchor, dim=1
+            )
             if len(distances):
                 return_negatives[ind] = embeddings[negative_idx][
                     torch.argmin(distances)
@@ -149,7 +167,9 @@ class BasicModel(nn.Module):
                 # Calculate losses
                 triplet_loss = self.embedding_loss(anchors, positives, negatives)
                 if skip_classification:
-                    classification_loss = torch.tensor((0,), dtype=torch.float64, device=self.device)
+                    classification_loss = torch.tensor(
+                        (0,), dtype=torch.float64, device=self.device
+                    )
                 else:
                     classification = self.classifier_layer(anchors)
                     classification_loss = self.classification_loss(
@@ -185,10 +205,10 @@ class BasicModel(nn.Module):
 
         embeddings = torch.cat(embeddings)
         targets = torch.argmax(torch.cat(targets), dim=1)
-        
+
         # avg_distances = DefaultDict(list)
         # for embedding in embeddings:
-            # if label
+        # if label
 
         X = PCA(n_components=2).fit_transform(embeddings, targets)
 
