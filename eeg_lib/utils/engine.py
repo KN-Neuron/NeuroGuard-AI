@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
 
+
 def verify_test_sample(test_df, model, user_profiles, sample_index=0, threshold=0.5):
     """
     Verifies a sample from the test dataframe against the user profiles.
@@ -69,7 +70,15 @@ def create_user_profiles(embeddings_array, participant_ids_array):
     return user_profiles
 
 
-def train_triplet_model(model: nn.Module, train_loader: DataLoader, loss_fn, optimizer, num_epochs: int, summary_writer: Optional[SummaryWriter]=None, device: str=get_device()):
+def train_triplet_model(
+    model: nn.Module,
+    train_loader: DataLoader,
+    loss_fn,
+    optimizer,
+    num_epochs: int,
+    summary_writer: Optional[SummaryWriter] = None,
+    device: str = get_device(),
+):
     """
     Train the EEGNet model using triplet loss on triplet data.
 
@@ -102,11 +111,11 @@ def train_triplet_model(model: nn.Module, train_loader: DataLoader, loss_fn, opt
     """
     model.train()
     results = {
-            "avg_loss": [],
-        }
+        "avg_loss": [],
+    }
     for epoch in range(num_epochs):
         running_loss = 0.0
-        
+
         for anchor, positive, negative in train_loader:
             anchor_embedding, _ = model(anchor)
             pos_embedding, _ = model(positive)
@@ -123,14 +132,16 @@ def train_triplet_model(model: nn.Module, train_loader: DataLoader, loss_fn, opt
             running_loss += loss.item()
 
         avg_loss = running_loss / len(train_loader)
-        results['avg_loss'].append(avg_loss)
+        results["avg_loss"].append(avg_loss)
         if summary_writer:
-            summary_writer.add_scalars(main_tag="Loss", 
-                           tag_scalar_dict={"avg_loss": avg_loss},
-                           global_step=epoch)
-        
+            summary_writer.add_scalars(
+                main_tag="Loss",
+                tag_scalar_dict={"avg_loss": avg_loss},
+                global_step=epoch,
+            )
+
         print(f"Epoch {epoch+1}, Average Loss: {avg_loss:.4f}")
-        
+
     return results, summary_writer
 
 
@@ -155,9 +166,15 @@ def extract_embeddings(model, test_df):
     with torch.no_grad():
         for _, row in test_df.iterrows():
             # Each row's epoch is of shape (4, 751); add channel dim → (1,4,751)
-            data = torch.tensor(row["epoch"], dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+            data = (
+                torch.tensor(row["epoch"], dtype=torch.float32)
+                .unsqueeze(0)
+                .unsqueeze(0)
+            )
             embedding, _ = model(data)
-            embedding = F.normalize(embedding, p=2, dim=1)  # normalize for similarity metrics
+            embedding = F.normalize(
+                embedding, p=2, dim=1
+            )  # normalize for similarity metrics
             embeddings_list.append(embedding.squeeze(0).cpu().numpy())
             participant_ids_list.append(row["participant_id"])
 
@@ -165,4 +182,3 @@ def extract_embeddings(model, test_df):
     participant_ids_array = np.array(participant_ids_list)
 
     return embeddings_array, participant_ids_array
-
