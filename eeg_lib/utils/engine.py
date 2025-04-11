@@ -1,5 +1,5 @@
-from matplotlib import pyplot as plt
 from sklearn.manifold import TSNE
+from sklearn.metrics import roc_curve
 from eeg_lib.utils.helpers import get_device
 
 from typing import Optional
@@ -10,6 +10,7 @@ from collections import defaultdict
 import numpy as np
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
+import matplotlib.pyplot as plt
 
 
 def verify_test_sample(test_df, model, user_profiles, sample_index=0, threshold=0.5):
@@ -182,3 +183,142 @@ def extract_embeddings(model, test_df):
     participant_ids_array = np.array(participant_ids_list)
 
     return embeddings_array, participant_ids_array
+
+
+def compute_pairwise_distances(embeddings_array, participant_ids_array):
+    """
+
+    Compute pairwise distances for genuine and imposter pairs.
+
+
+
+    Args:
+
+        embeddings_array (np.ndarray): Array of embeddings of shape (N, D).
+
+        participant_ids_array (np.ndarray): Array of participant IDs.
+
+
+
+    Returns:
+
+        tuple: A tuple containing two lists - genuine_distances and imposter_distances.
+
+    """
+
+    genuine_distances = []
+
+    imposter_distances = []
+
+    N = len(embeddings_array)
+
+    for i in range(N):
+        for j in range(i + 1, N):
+            distance = np.linalg.norm(embeddings_array[i] - embeddings_array[j])
+
+            if participant_ids_array[i] == participant_ids_array[j]:
+                genuine_distances.append(distance)
+
+            else:
+                imposter_distances.append(distance)
+
+    return genuine_distances, imposter_distances
+
+
+def find_eer_threshold(genuine_distances, imposter_distances):
+    """
+    Find the Equal Error Rate (EER) threshold.
+
+    The EER is the point where the False Acceptance Rate (FAR) equals the False Rejection Rate (FRR).
+
+    Args:
+        genuine_distances (list): List of distances for genuine pairs.
+        imposter_distances (list): List of distances for imposter pairs.
+
+    Returns:
+        float: The threshold at which EER occurs.
+    """
+
+    distances = np.concatenate([genuine_distances, imposter_distances])
+    labels = np.concatenate(
+        [np.ones(len(genuine_distances)), np.zeros(len(imposter_distances))]
+    )
+
+    false_positive_rate, true_positive_rate, thresholds = roc_curve(
+        labels, distances, pos_label=0
+    )
+
+    false_rejection_rate = 1 - true_positive_rate
+
+    eer_index = np.nanargmin(np.abs(false_positive_rate - false_rejection_rate))
+    eer_threshold = thresholds[eer_index]
+
+    return eer_threshold
+
+
+def plot_2d_embeddings(embeddings_2d, participant_ids, method_name="t-SNE"):
+    """
+    Plots 2D embeddings colored by participant/user ID.
+
+    Args:
+        embeddings_2d (np.ndarray): 2D array of shape (N, 2).
+        participant_ids (np.ndarray): Array of shape (N,) with user IDs.
+        method_name (str): Name of the dimensionality reduction method (for title).
+    """
+    plt.figure(figsize=(10, 8))
+    unique_users = np.unique(participant_ids)
+    for user in unique_users:
+        idx = np.where(participant_ids == user)
+        plt.scatter(
+            embeddings_2d[idx, 0], embeddings_2d[idx, 1], label=str(user), alpha=0.7
+        )
+    plt.title(f"{method_name} Visualization of EEG Embeddings (All Users)")
+    plt.xlabel(f"{method_name} Dimension 1")
+    plt.ylabel(f"{method_name} Dimension 2")
+    plt.legend(title="User ID", bbox_to_anchor=(1.05, 1), loc="upper left")
+    plt.tight_layout()
+    plt.show()
+
+
+def run_threshold_and_visualization(model, test_df):
+    """
+    Extracts embeddings for all test samples, performs threshold selection by computing the
+    genuine and imposter pairwise distances, and then produces t-SNE and UMAP plots for all users.
+
+    Args:
+        model (nn.Module): Trained EEGNet model.
+        test_df (pd.DataFrame): Test DataFrame containing columns 'participant_id' and 'epoch'.
+        device (str): Device to perform inference on.
+
+    Returns:
+        Tuple[float, float, float, float, np.ndarray, np.ndarray]:
+            - best_threshold: The selected threshold (approximate EER point).
+            - approximate_eer: The computed equal error rate.
+            - final_FRR: Final false reject rate at the threshold.
+            - final_FAR: Final false accept rate at the threshold.
+            - tsne_coords: 2D coordinates from t-SNE.
+            - umap_coords: 2D coordinates from UMAP.
+    """
+    embeddings_array, participant_ids_array = extract_embeddings(model, test_df)
+    print(f"Extracted embeddings shape: {embeddings_array.shape}")
+
+    genuine_distances, imposter_distances = compute_pairwise_distances(
+        embeddings_array, participant_ids_array
+    )
+
+    best_threshold, approximate_eer, final_FRR, final_FAR = find_eer_threshold(
+        genuine_distances, imposter_distances
+    )
+    print(
+        f"Selected threshold = {best_threshold:.4f}, EER = {approximate_eer:.4f} (FRR = {final_FRR:.4f}, FAR = {final_FAR:.4f})"
+    )
+
+    tsne = TSNE(n_components=2, random_state=42, perplexity=30)
+    tsne_coords = tsne.fit_transform(embeddings_array)
+    plot_2d_embeddings(tsne_coords, participant_ids_array, method_name="t-SNE")
+
+    # reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, random_state=42)
+    # umap_coords = reducer.fit_transform(embeddings_array)
+    # plot_2d_embeddings(umap_coords, participant_ids_array, method_name="UMAP")
+
+    return best_threshold, approximate_eer, final_FRR, final_FAR, tsne_coords
