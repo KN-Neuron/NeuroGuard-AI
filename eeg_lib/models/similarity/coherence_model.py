@@ -12,29 +12,25 @@ class BasicModel(nn.Module):
         super(BasicModel, self).__init__()
         self.loss_relation = loss_relation
 
-        self.embedding_net_1 = nn.Sequential(
-            nn.Linear(input_size, 240),
-            nn.ELU(),
-            nn.Linear(240, 960),
-            nn.ELU(),
+        self.embedding_net = nn.Sequential(
+            nn.Linear(input_size, 960),
+            nn.ReLU(),
             nn.Linear(960, 960),
-            nn.ELU(),
+            nn.ReLU(),
+            nn.Linear(960, 960),
+            nn.ReLU(),
+            nn.Linear(960, 960),
+            nn.ReLU(),
+            nn.Linear(960, 960),
+            nn.ReLU(),
             nn.Linear(960, 640),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(640, 320),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(320, 240),
-            nn.ELU(),
-        )
-
-        self.embedding_net_2 = nn.Sequential(
+            nn.ReLU(),
             nn.Linear(240, 128),
-            nn.ELU(),
-            nn.Linear(128, 128),
-            nn.ELU(),
-            nn.Linear(128, 128),
-            nn.ELU(),
-            nn.Linear(128, 128),
+            nn.Tanh(),
         )
 
         self.classifier_layer = nn.Sequential(
@@ -43,18 +39,14 @@ class BasicModel(nn.Module):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.embedding_loss = nn.TripletMarginWithDistanceLoss(
-            swap=True,
-            distance_function=lambda x, y: 1 - F.cosine_similarity(x, y),
-            margin=.5,
+            distance_function=lambda x, y: 1 - torch.sum(x * y, dim=1)
         )
-        self.classification_loss = nn.CrossEntropyLoss(label_smoothing=0.1)
+        self.classification_loss = nn.CrossEntropyLoss()
         self.optimizer = None
 
     def forward(self, x, return_embeddings=False):
-        partial_embeddings = self.embedding_net_1(x)
-
-        embeddings = self.embedding_net_2(partial_embeddings + x)
-        embeddings = F.normalize(embeddings, p=2, dim=1)
+        partial_embeddings = self.embedding_net(x)
+        embeddings = F.normalize(partial_embeddings, p=2, dim=1)
 
         return embeddings if return_embeddings else self.classifier_layer(embeddings)
 
@@ -65,7 +57,7 @@ class BasicModel(nn.Module):
         epochs: int = 50,
         lr: float = 0.001,
     ) -> None:
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr, weight_decay=1e-5)
 
         self.to(self.device)
         writer = SummaryWriter()
@@ -127,9 +119,7 @@ class BasicModel(nn.Module):
             negative_idx = torch.where(labels != label)[0]
 
             # Positive
-            distances = 1 - F.cosine_similarity(
-                embeddings[positive_idx], anchor, dim=1
-            )
+            distances = -torch.sum(embeddings[positive_idx] * anchor, dim=1)
             if len(distances):
                 return_positives[ind] = embeddings[positive_idx][
                     torch.argmax(distances)
@@ -139,9 +129,7 @@ class BasicModel(nn.Module):
                 print(label)
 
             # Negative
-            distances = 1 - F.cosine_similarity(
-                embeddings[negative_idx], anchor, dim=1
-            )
+            distances = -torch.sum(embeddings[negative_idx] * anchor, dim=1)
             if len(distances):
                 return_negatives[ind] = embeddings[negative_idx][
                     torch.argmin(distances)
@@ -205,10 +193,6 @@ class BasicModel(nn.Module):
 
         embeddings = torch.cat(embeddings)
         targets = torch.argmax(torch.cat(targets), dim=1)
-
-        # avg_distances = DefaultDict(list)
-        # for embedding in embeddings:
-        # if label
 
         X = PCA(n_components=2).fit_transform(embeddings, targets)
 

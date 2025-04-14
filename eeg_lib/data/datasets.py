@@ -16,7 +16,7 @@ def _compute_or_load_coherence(directory: str) -> tuple[torch.Tensor, torch.Tens
     except FileNotFoundError:
         extractor = EEGDataExtractor(
             data_dir="../../artificial-intelligence/data/kolory/Kolory",
-            hfreq=55,
+            hfreq=40,
             resample_freq=100,
             tmax=10,
         )
