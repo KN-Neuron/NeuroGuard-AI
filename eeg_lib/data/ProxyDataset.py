@@ -9,10 +9,10 @@ class ProxyDataset(Dataset):
 
         self.data = data
         self.labels = labels
+        print(len(np.unique(labels)))
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, index):
-
         return torch.Tensor(self.data[index]).unsqueeze(0), self.labels[index]

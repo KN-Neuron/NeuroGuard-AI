@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import matplotlib.patches as mpatches
+from typing import Optional, List, Union, Tuple, Any
+from matplotlib.colors import Colormap, ListedColormap
 
 def plot_predictions(
     train_data, train_labels, test_data, test_labels, predictions=None
@@ -55,44 +58,129 @@ def plot_loss_curves(results: dict):
     plt.legend()
 
 
-def plot_tsne(embeddings,
-              cmap,
-              labels,
-              handles=None,
-              figsize=(10, 8),
-              alpha=1.0,
-              title=None,
-              xlabel=None,
-              ylabel=None,
-              centroids=None,
-              test_embeddings=None,
-              test_labels=None,
-              save=False):
-    plt.figure(figsize=(figsize[0], figsize[1]))
-    scatter_train = plt.scatter(embeddings[:, 0], embeddings[:, 1], c=labels, cmap=cmap, alpha=alpha)
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+def plot_tsne(
+    embeddings: np.ndarray,
+    cmap: Colormap,
+    labels: np.ndarray,
+    handles: Optional[list[mpatches.Patch]] = None,
+    figsize: tuple[int, int] = (10, 8),
+    alpha: float = 1.0,
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    centroids: Optional[dict] = None,
+    test_embeddings: Optional[np.ndarray] = None,
+    test_labels: Optional[np.ndarray] = None,
+    save: bool = False,
+    return_fig: bool = True
+) -> Optional[plt.Figure]:
+    """
+    Plots a 2D t-SNE visualization for given embeddings along with optional centroids and test data.
+
+    The function creates a matplotlib figure displaying a scatter plot of the t-SNE
+    embeddings. It uses a specified colormap and assigns colors based on the provided label values.
+    Optionally, it can also plot centroids and test embeddings. A legend is created from the provided
+    handles (if any); otherwise, a default legend is attempted.
+
+    Args:
+        embeddings (np.ndarray): A 2D numpy array of shape (N, 2) representing t-SNE embeddings for the data.
+        cmap (Union[str, Colormap]): The colormap to use for the scatter plot.
+        labels (np.ndarray): A 1D numpy array of numerical labels corresponding to the embeddings.
+        handles (Optional[List[mpatches.Patch]], optional): A list of legend handles (e.g., patches)
+            to use for the plot legend. Defaults to None.
+        figsize (Tuple[int, int], optional): Figure size in inches as a tuple (width, height). Defaults to (10, 8).
+        alpha (float, optional): The transparency value for the scatter points. Defaults to 1.0.
+        title (Optional[str], optional): The title of the plot. Defaults to None.
+        xlabel (Optional[str], optional): Label for the x-axis. Defaults to None.
+        ylabel (Optional[str], optional): Label for the y-axis. Defaults to None.
+        centroids (Optional[dict], optional): A dictionary mapping identifiers to 2D coordinates for centroids.
+            If provided, these centroids are plotted with a distinct marker ("X"). Defaults to None.
+        test_embeddings (Optional[np.ndarray], optional): A 2D numpy array of test embeddings to plot in addition.
+            Defaults to None.
+        test_labels (Optional[np.ndarray], optional): A 1D numpy array of labels corresponding to test_embeddings.
+            Defaults to None.
+        save (bool, optional): If True and a title is provided, the plot is saved as a PNG file in an 'images' folder.
+            Defaults to False.
+        return_fig (bool, optional): If True, the function returns the matplotlib Figure object. If False, the plot is shown and None is returned.
+            Defaults to True.
+
+    Returns:
+        Optional[plt.Figure]: The matplotlib Figure object if return_fig is True; otherwise, None.
+
+    Example:
+        >>> fig = plot_tsne(
+        ...     embeddings=train_reduced_normalized,
+        ...     cmap='tab10',
+        ...     labels=y_train_encoded,
+        ...     handles=train_handles,
+        ...     alpha=0.7,
+        ...     title="t-SNE Visualization - Train Data",
+        ...     xlabel="t-SNE Component 1",
+        ...     ylabel="t-SNE Component 2"
+        ... )
+        >>> if fig:
+        ...     fig.show()
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+
+    scatter_train = ax.scatter(embeddings[:, 0], embeddings[:, 1],
+                               c=labels, cmap=cmap, alpha=alpha,
+                               vmin=0, vmax=len(np.unique(labels)) - 1)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
 
     if centroids is not None:
         centroid_vals = np.array(list(centroids.values()))
         centroid_keys = np.array(list(centroids.keys()))
-        scatter_centroid = plt.scatter(centroid_vals[:, 0], centroid_vals[:, 1], c=centroid_keys, marker="X", s=300,
-                               cmap=cmap, edgecolors="black")
+        ax.scatter(centroid_vals[:, 0], centroid_vals[:, 1],
+                   c=centroid_keys, marker="X", s=300, cmap=cmap,
+                   edgecolors="black")
 
     if test_embeddings is not None:
-        scatter_test = plt.scatter(test_embeddings[:, 0],
-                                   test_embeddings[:, 1],
-                                   c=test_labels,
-                                   cmap=cmap,
-                                   marker="o",
-                                   s=50)
-    plt.legend(handles=handles, bbox_to_anchor=(1.05, 1), loc="upper left")
+        ax.scatter(test_embeddings[:, 0], test_embeddings[:, 1],
+                   c=test_labels, cmap=cmap, marker="o", s=50)
+
+    if handles is not None:
+        ax.legend(handles=handles, bbox_to_anchor=(1.05, 1), loc="upper left")
+    else:
+        ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+
     plt.tight_layout()
 
-    if save:
+    if save and title is not None:
         save_path = os.path.join("images", title + ".png")
-        plt.savefig(save_path, format="png", dpi=300)
+        fig.savefig(save_path, format="png", dpi=300)
 
-    plt.show()
+    if return_fig:
+        return fig
+    else:
+        plt.show()
 
+
+def create_handles(y: np.ndarray, cmap: Colormap) -> List[mpatches.Patch]:
+    """
+    Creates a list of legend handles for a given set of labels using a specified colormap.
+
+    Each unique value in y is mapped to a patch colored according to the colormap. This is useful
+    for creating legends in visualizations (e.g., t-SNE plots) where the colors correspond to specific labels.
+
+    Args:
+        y (Union[np.ndarray, List[Any]]): A 1D array or list of labels (can be numerical or strings).
+        cmap (Colormap): A matplotlib colormap object to map label indices to colors.
+
+    Returns:
+        List[mpatches.Patch]: A list of matplotlib Patch objects that can be used in a legend.
+
+    Example:
+        >>> handles = create_handles(y_train, plt.get_cmap('tab10'))
+        >>> plt.legend(handles=handles, title="User ID")
+    """
+    unique_ids = np.unique(y)
+    handles = []
+    num_ids = len(unique_ids)
+    for i in range(num_ids):
+        color = cmap(float(i) / (len(unique_ids) - 1))
+        patch = mpatches.Patch(color=color, label=str(unique_ids[i]))
+        handles.append(patch)
+    return handles
