@@ -5,13 +5,13 @@ import torch.nn.functional as F
 from eeg_lib.data.datasets import WelchDatasetKolory
 from eeg_lib.models.similarity.apt_model import APT
 
-val_dataset = WelchDatasetKolory("datasets", persons_left=27, reversed_persons=False)
+val_dataset = WelchDatasetKolory("datasets", persons_left=2, reversed_persons=True)
 
 # Load model
 
 model = APT(
     freq_dim=100,
-    electorode_dim=4,
+    electrode_dim=4,
     num_classes=27,
     loss_relation=.3,
 )
@@ -38,13 +38,13 @@ with torch.no_grad():
         negative_embeddings = embeddings[labels != label]
 
         for embedding in positive_embeddings:
-            # distances = 1 - F.cosine_similarity(positive_embeddings, embedding)
-            distances = torch.norm(positive_embeddings - embedding, p=2, dim=1)
+            distances = 1 - F.cosine_similarity(positive_embeddings, embedding)
+            # distances = torch.norm(positive_embeddings - embedding, p=2, dim=1)
             all_positive_distances = torch.cat((all_positive_distances, distances.cpu()))
             
         for embedding in negative_embeddings:
-            # distances = 1 - F.cosine_similarity(positive_embeddings, embedding)
-            distances = torch.norm(positive_embeddings - embedding, p=2, dim=1)
+            distances = 1 - F.cosine_similarity(positive_embeddings, embedding)
+            # distances = torch.norm(positive_embeddings - embedding, p=2, dim=1)
             all_negative_distances = torch.cat((all_negative_distances, distances.cpu()))
 
 plt.hist(all_positive_distances, 20, color="green", alpha=.7)

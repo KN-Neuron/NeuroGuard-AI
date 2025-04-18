@@ -10,15 +10,19 @@ class APT(nn.Module):
     def __init__(
         self,
         freq_dim=40,
-        electorode_dim=4,
-        nhead=4,
-        num_layers=4,
-        dim_feedforward=512,
+        electrode_dim=4,
+        nhead=2,
+        num_layers=2,
+        dim_feedforward=1024,
         num_classes=30,
         loss_relation=0.7,
     ):
         super().__init__()
         self.loss_relation = loss_relation
+
+        self.electrode_embed = nn.Parameter(torch.randn(1, electrode_dim, freq_dim))
+        self.freq_embed = nn.Parameter(torch.randn(1, 1, freq_dim))
+        self.pos_scale = nn.Parameter(torch.tensor(1.0))
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=freq_dim,
@@ -32,21 +36,22 @@ class APT(nn.Module):
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         self.embedding_net = nn.Sequential(
-            nn.Linear(freq_dim * electorode_dim, 512),
+            nn.Linear(freq_dim * electrode_dim, 512),
             nn.Dropout(0.1),
-            nn.GELU(),
+            nn.Tanh(),
             nn.Linear(512, 512),
             nn.Dropout(0.1),
-            nn.GELU(),
+            nn.Tanh(),
             nn.Linear(512, 512),
             nn.Dropout(0.1),
-            nn.GELU(),
+            nn.Tanh(),
             nn.Linear(512, 256),
-            nn.GELU(),
+            nn.Tanh(),
             nn.Linear(256, 128),
-            nn.GELU(),
+            nn.Tanh(),
             nn.Linear(128, 128),
         )
+        # nn.Embedding()
 
         self.classifier_layer = nn.Sequential(
             nn.Linear(128, num_classes),
@@ -54,18 +59,19 @@ class APT(nn.Module):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.embedding_loss = nn.TripletMarginWithDistanceLoss(
-            distance_function=lambda x, y: 1 - torch.sum(x * y, dim=1), margin=0.8
+            distance_function=lambda x, y: 1 - torch.sum(x * y, dim=1), margin=0.4
         )
         # self.embedding_loss = nn.TripletMarginLoss(margin=0.4, p=2)
         self.classification_loss = nn.CrossEntropyLoss()
         self.optimizer = None
 
     def forward(self, x, return_embeddings=False):
+        x = x + self.pos_scale * self.electrode_embed + self.freq_embed
         partial_embeddings: torch.Tensor = self.transformer(x)
         partial_embeddings = partial_embeddings.flatten(start_dim=1)
 
         embeddings = self.embedding_net(partial_embeddings)
-        embeddings = F.normalize(embeddings, p=1, dim=1)
+        embeddings = F.normalize(embeddings, p=2, dim=1)
 
         return embeddings if return_embeddings else self.classifier_layer(embeddings)
 
@@ -110,6 +116,7 @@ class APT(nn.Module):
 
             if val_loader is not None:
                 val_loss, val_hinge_loss, val_class_loss = self.evaluate(val_loader)
+                self.visualize_embeddings(val_loader, just_save=True, i=epoch)
             else:
                 val_loss, val_hinge_loss, val_class_loss = 0, 0, 0
 
@@ -180,6 +187,7 @@ class APT(nn.Module):
             if len(distances):
                 return_positives[ind] = embeddings[positive_idx][
                     torch.argsort(distances, descending=True)[
+                        # 0
                         torch.randint(0, len(distances) // 4, size=(1,))
                     ]
                 ]
@@ -190,13 +198,14 @@ class APT(nn.Module):
             if len(distances):
                 return_negatives[ind] = embeddings[negative_idx][
                     torch.argsort(distances)[
+                        # 0
                         torch.randint(0, len(distances) // 4, size=(1,))
                     ]
                 ]
 
         return (embeddings, return_positives, return_negatives, labels)
 
-    def visualize_embeddings(self, dataloader) -> None:
+    def visualize_embeddings(self, dataloader, just_save=False, i=0) -> None:
         import matplotlib.pyplot as plt
         from sklearn.decomposition import PCA
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
@@ -215,11 +224,19 @@ class APT(nn.Module):
         embeddings = torch.cat(embeddings)
         targets = torch.argmax(torch.cat(targets), dim=1)
 
+        plt.figure()
         X = PCA(n_components=2).fit_transform(embeddings, targets)
 
         for y in torch.unique(targets):
-            plt.scatter(X[:, 0][targets == y], X[:, 1][targets == y])
-        plt.show()
+            plt.scatter(X[:, 0][targets == y], X[:, 1][targets == y], alpha=0.8)
+
+        if not just_save:
+            plt.show()
+        else:
+            plt.savefig(
+                f"/home/vanilla/Studia/neuron/rnns/artificial-intelligence/embeddings/emb{i}.png"
+            )
+        plt.close()
 
 
 if __name__ == "__main__":

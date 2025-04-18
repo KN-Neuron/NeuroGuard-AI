@@ -50,13 +50,12 @@ def _compute_or_load_welch(directory: str) -> tuple[torch.Tensor, torch.Tensor]:
 
         extractor = EEGDataExtractor(
             data_dir="/home/vanilla/Studia/neuron/rnns/artificial-intelligence/datasets/Kolory",
-            hfreq=40,
             resample_freq=100,
-            tmax=10,
+            tmax=5,
         )
         eeg_df, _ = extractor.extract_dataframe()
-
-        X = np.array([*eeg_df["epoch"].to_numpy()])
+        
+        X = np.array([*eeg_df["epoch"][~eeg_df["label"].isin(["grey", "break"])].to_numpy()])
         X = torch.tensor(X, dtype=torch.float32)
 
         psds = torch.empty(size=(X.shape[0], X.shape[1], 100), dtype=torch.float32)
@@ -76,7 +75,7 @@ def _compute_or_load_welch(directory: str) -> tuple[torch.Tensor, torch.Tensor]:
 
         torch.save(psds, f"{directory}/WelchKolory_data.pt")
 
-        y = LabelEncoder().fit_transform(eeg_df["participant_id"])
+        y = LabelEncoder().fit_transform(eeg_df["participant_id"][~eeg_df["label"].isin(["grey", "break"])])
         y = torch.tensor(
             OneHotEncoder(sparse_output=False).fit_transform(y.reshape((-1, 1)))
         )
