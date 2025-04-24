@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-# Model Grzesia zeby sprawdic czy to problem w modelu faktycznie
+
 class EEGNetEmbeddingModel(nn.Module):
     """
     EEGNet model adapted for generating embeddings from EEG data for verification tasks.

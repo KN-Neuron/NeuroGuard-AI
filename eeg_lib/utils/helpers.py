@@ -128,9 +128,9 @@ class EEGTripletDataset(Dataset):
         positive_row = self.eeg_df.iloc[positive_idx]
         negative_row = self.eeg_df.iloc[negative_idx]
 
-        anchor = torch.tensor(anchor_row['epoch'], dtype=torch.float32)
-        positive = torch.tensor(positive_row['epoch'], dtype=torch.float32)
-        negative = torch.tensor(negative_row['epoch'], dtype=torch.float32)
+        anchor = torch.tensor(anchor_row['epoch'], dtype=torch.float32).unsqueeze(0)
+        positive = torch.tensor(positive_row['epoch'], dtype=torch.float32).unsqueeze(0)
+        negative = torch.tensor(negative_row['epoch'], dtype=torch.float32).unsqueeze(0)
 
         return anchor, positive, negative
 

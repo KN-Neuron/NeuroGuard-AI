@@ -3,7 +3,14 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 
-def train_eegnet(model: nn.Module, train_loader: DataLoader, optimizer: torch.optim.Optimizer, device: torch.device, triplet_loss, num_epochs: int = 30) -> dict:
+def train_eegnet(
+    model: nn.Module,
+    train_loader: DataLoader,
+    optimizer: torch.optim.Optimizer,
+    device: torch.device,
+    triplet_loss,
+    num_epochs: int = 30,
+) -> dict:
     """
     Train an EEGNet model using a triplet loss function.
 
@@ -20,7 +27,7 @@ def train_eegnet(model: nn.Module, train_loader: DataLoader, optimizer: torch.op
         dict: Dictionary containing training history (train_loss).
     """
 
-    train_history = {'train_loss': []}
+    train_history = {"train_loss": []}
 
     model.to(device)
 
@@ -29,11 +36,9 @@ def train_eegnet(model: nn.Module, train_loader: DataLoader, optimizer: torch.op
         epoch_loss = 0.0
 
         for anchor, positive, negative in train_loader:
-
-            anchor_emb = model(anchor)
-            positive_emb = model(positive)
-            negative_emb = model(negative)
-
+            anchor_emb, _ = model(anchor)
+            positive_emb, _ = model(positive)
+            negative_emb, _ = model(negative)
             loss = triplet_loss(anchor_emb, positive_emb, negative_emb)
 
             optimizer.zero_grad()
@@ -43,7 +48,7 @@ def train_eegnet(model: nn.Module, train_loader: DataLoader, optimizer: torch.op
             epoch_loss += loss.item()
 
         avg_loss = epoch_loss / len(train_loader)
-        train_history['train_loss'].append(avg_loss)
+        train_history["train_loss"].append(avg_loss)
 
         print(f"Epoch {epoch + 1}/{num_epochs} | Train Loss: {avg_loss:.4f}")
 
