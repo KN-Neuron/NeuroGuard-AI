@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 # Model Grzesia zeby sprawdic czy to problem w modelu faktycznie
 class EEGNetEmbeddingModel(nn.Module):
     """
@@ -110,10 +111,8 @@ class EEGNetEmbeddingModel(nn.Module):
 
         self.embedding_layer = nn.Linear(flattened_size, embedding_dimension)
 
-        self.classification_layer = nn.Linear(embedding_dimension, num_classes)
 
         self.apply_max_norm_to_layer(self.spatial_conv_block[0], max_norm_depthwise)
-        self.apply_max_norm_to_layer(self.classification_layer, max_norm_linear)
 
     def apply_max_norm_to_layer(self, layer: nn.Module, max_norm_value: float):
         """
@@ -149,5 +148,4 @@ class EEGNetEmbeddingModel(nn.Module):
         x = self.separable_conv_block(x)
         x = self.flatten_layer(x)
         embedding_vector = self.embedding_layer(x)
-        classification_logits = self.classification_layer(embedding_vector)
-        return embedding_vector, classification_logits
+        return embedding_vector
