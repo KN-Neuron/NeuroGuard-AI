@@ -13,10 +13,12 @@ model = APT(
     freq_dim=100,
     electrode_dim=4,
     num_classes=27,
-    loss_relation=.3,
+    loss_relation=0.3,
 )
 model.load_state_dict(
-    torch.load("apt_model_prime.pth", weights_only=True, map_location=torch.device("cuda"))
+    torch.load(
+        "apt_model_prime.pth", weights_only=True, map_location=torch.device("cuda")
+    )
 )
 model.to(torch.device("cuda"))
 model.eval()
@@ -38,15 +40,19 @@ with torch.no_grad():
         negative_embeddings = embeddings[labels != label]
 
         for embedding in positive_embeddings:
-            distances = 1 - F.cosine_similarity(positive_embeddings, embedding)
+            distances = 1 - torch.sum(positive_embeddings * embedding, dim=1)
             # distances = torch.norm(positive_embeddings - embedding, p=2, dim=1)
-            all_positive_distances = torch.cat((all_positive_distances, distances.cpu()))
-            
-        for embedding in negative_embeddings:
-            distances = 1 - F.cosine_similarity(positive_embeddings, embedding)
-            # distances = torch.norm(positive_embeddings - embedding, p=2, dim=1)
-            all_negative_distances = torch.cat((all_negative_distances, distances.cpu()))
+            all_positive_distances = torch.cat(
+                (all_positive_distances, distances.cpu())
+            )
 
-plt.hist(all_positive_distances, 20, color="green", alpha=.7)
-plt.hist(all_negative_distances, 20, color="red", alpha=.7)
+        for embedding in negative_embeddings:
+            distances = 1 - torch.sum(positive_embeddings * embedding, dim=1)
+            # distances = torch.norm(positive_embeddings - embedding, p=2, dim=1)
+            all_negative_distances = torch.cat(
+                (all_negative_distances, distances.cpu())
+            )
+
+plt.hist(all_positive_distances, 20, color="green", alpha=0.7)
+plt.hist(all_negative_distances, 20, color="red", alpha=0.7)
 plt.show()

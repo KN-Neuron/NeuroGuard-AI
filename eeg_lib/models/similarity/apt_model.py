@@ -20,6 +20,9 @@ class APT(nn.Module):
         super().__init__()
         self.loss_relation = loss_relation
 
+        self.electrode_dim = electrode_dim
+        self.freq_dim = freq_dim
+
         self.electrode_embed = nn.Parameter(torch.randn(1, electrode_dim, freq_dim))
         self.freq_embed = nn.Parameter(torch.randn(1, 1, freq_dim))
         self.pos_scale = nn.Parameter(torch.tensor(1.0))
@@ -33,25 +36,31 @@ class APT(nn.Module):
             activation="gelu",
         )
 
+        self.pre_transformer_layer = nn.Sequential(
+            nn.Linear(electrode_dim * freq_dim, electrode_dim * freq_dim),
+            nn.Sigmoid(),
+            nn.Linear(electrode_dim * freq_dim, electrode_dim * freq_dim),
+            nn.Sigmoid(),
+            nn.Linear(electrode_dim * freq_dim, electrode_dim * freq_dim),
+            nn.BatchNorm1d(electrode_dim * freq_dim),
+        )
+
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         self.embedding_net = nn.Sequential(
             nn.Linear(freq_dim * electrode_dim, 512),
-            nn.Dropout(0.1),
             nn.Tanh(),
             nn.Linear(512, 512),
-            nn.Dropout(0.1),
             nn.Tanh(),
             nn.Linear(512, 512),
-            nn.Dropout(0.1),
             nn.Tanh(),
             nn.Linear(512, 256),
             nn.Tanh(),
             nn.Linear(256, 128),
             nn.Tanh(),
             nn.Linear(128, 128),
+            # nn.BatchNorm1d(128)
         )
-        # nn.Embedding()
 
         self.classifier_layer = nn.Sequential(
             nn.Linear(128, num_classes),
@@ -66,6 +75,8 @@ class APT(nn.Module):
         self.optimizer = None
 
     def forward(self, x, return_embeddings=False):
+        x = self.pre_transformer_layer(x.view(-1, self.electrode_dim * self.freq_dim))
+        x = x.view(-1, self.electrode_dim, self.freq_dim)
         x = x + self.pos_scale * self.electrode_embed + self.freq_embed
         partial_embeddings: torch.Tensor = self.transformer(x)
         partial_embeddings = partial_embeddings.flatten(start_dim=1)

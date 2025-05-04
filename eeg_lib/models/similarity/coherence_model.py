@@ -23,11 +23,11 @@ class BasicModel(nn.Module):
             nn.Linear(960, 960),
             nn.ReLU(),
             nn.Linear(960, 640),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(640, 320),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(320, 240),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(240, 128),
             nn.Tanh(),
         )
@@ -38,7 +38,7 @@ class BasicModel(nn.Module):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.embedding_loss = nn.TripletMarginWithDistanceLoss(
-            distance_function=lambda x, y: 1 - torch.sum(x * y, dim=1)
+            distance_function=lambda x, y: 1 - torch.sum(x * y, dim=1), margin=0.4
         )
         self.classification_loss = nn.CrossEntropyLoss()
         self.optimizer = None
@@ -121,21 +121,21 @@ class BasicModel(nn.Module):
             distances = -torch.sum(embeddings[positive_idx] * anchor, dim=1)
             if len(distances):
                 return_positives[ind] = embeddings[positive_idx][
-                    torch.argmax(distances)
+                    torch.argsort(distances, descending=True)[
+                        # 0
+                        torch.randint(0, len(distances) // 4, size=(1,))
+                    ]
                 ]
-            else:
-                print(negative_idx)
-                print(label)
 
             # Negative
             distances = -torch.sum(embeddings[negative_idx] * anchor, dim=1)
             if len(distances):
                 return_negatives[ind] = embeddings[negative_idx][
-                    torch.argmin(distances)
+                    torch.argsort(distances)[
+                        # 0
+                        torch.randint(0, len(distances) // 4, size=(1,))
+                    ]
                 ]
-            else:
-                print(negative_idx)
-                print(label)
 
         return (embeddings, return_positives, return_negatives, labels)
 

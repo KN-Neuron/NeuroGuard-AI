@@ -14,7 +14,7 @@ val_dataset = CohDatasetKolory("datasets", persons_left=27, reversed_persons=Fal
 # Load model
 model = BasicModel(input_size=240, num_classes=27)
 model.load_state_dict(
-    torch.load("coh_model1.pth", weights_only=True, map_location=torch.device("cuda"))
+    torch.load("coh_model_prime.pth", weights_only=True, map_location=torch.device("cuda"))
 )
 model.to(torch.device("cuda"))
 model.eval()
