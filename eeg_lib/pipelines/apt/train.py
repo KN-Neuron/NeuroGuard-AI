@@ -17,13 +17,13 @@ model = APT(
     loss_relation=0.9,
 )
 
-model.load_state_dict(torch.load("apt_model.pth", weights_only=True, map_location=torch.device("cuda")))
+model.load_state_dict(torch.load("apt_model_prime.pth", weights_only=True, map_location=torch.device("cuda")))
 model.to(torch.device("cuda"))
-# model.visualize_embeddings(val_loader)
-
-model.train_model(train_loader, val_loader=val_loader, lr=0.001, epochs=20)
-
-model.visualize_embeddings(train_loader)
 model.visualize_embeddings(val_loader)
 
-torch.save(model.state_dict(), "apt_model_prime.pth")
+# model.train_model(train_loader, val_loader=val_loader, lr=0.001, epochs=20)
+
+# model.visualize_embeddings(train_loader)
+# model.visualize_embeddings(val_loader)
+
+# torch.save(model.state_dict(), "apt_model_prime.pth")

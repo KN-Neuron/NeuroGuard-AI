@@ -27,15 +27,6 @@ class APT(nn.Module):
         self.freq_embed = nn.Parameter(torch.randn(1, 1, freq_dim))
         self.pos_scale = nn.Parameter(torch.tensor(1.0))
 
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=freq_dim,
-            nhead=nhead,
-            dim_feedforward=dim_feedforward,
-            # dropout=0.1,
-            batch_first=True,
-            activation="gelu",
-        )
-
         self.pre_transformer_layer = nn.Sequential(
             nn.Linear(electrode_dim * freq_dim, electrode_dim * freq_dim),
             nn.Sigmoid(),
@@ -43,6 +34,15 @@ class APT(nn.Module):
             nn.Sigmoid(),
             nn.Linear(electrode_dim * freq_dim, electrode_dim * freq_dim),
             nn.BatchNorm1d(electrode_dim * freq_dim),
+        )
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=freq_dim,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            # dropout=0.1,
+            batch_first=True,
+            activation="gelu",
         )
 
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)

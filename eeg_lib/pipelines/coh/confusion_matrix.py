@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 from eeg_lib.data.datasets import CohDatasetKolory
 from eeg_lib.models.similarity.coherence_model import BasicModel
 
-val_dataset = CohDatasetKolory("datasets", persons_left=3, reversed_persons=True)
+val_dataset = CohDatasetKolory("datasets", persons_left=27, reversed_persons=False)
 
 # Load model
 model = BasicModel(input_size=240, num_classes=27)
 model.load_state_dict(
-    torch.load("coh_model.pth", weights_only=True, map_location=torch.device("cuda"))
+    torch.load("models/coh_model_prime.pth", weights_only=True, map_location=torch.device("cuda"))
 )
 model.to(torch.device("cuda"))
 
@@ -23,47 +23,59 @@ embeddings = model(X.to(model.device), return_embeddings=True)
 all_positive_distances = torch.empty(size=(0,))
 all_negative_distances = torch.empty(size=(0,))
 
-# Verification parameters
-n_of_anchors = 10
-anchor_threshold = 7
+k = 5
+max_authorization_samples = 10
+best_accuracy = 0
+best_results = None
+best_threshold = None
 
-for t in range(0, 10):
-    threshold = 1.3 + t*.05
-    
-    # Result tracking
+for t in range(0, 20):
+    threshold = 0.0 + t * 0.05
     results = torch.zeros((3, 2, 2))
+
     for label in range(3):
-        positive_embeddings = embeddings[labels == label]
-        negative_embeddings = embeddings[labels != label]
+        all_class_embeddings = embeddings[labels == label]
+        all_other_embeddings = embeddings[labels != label]
 
-        anchors_idx = torch.randint(0, positive_embeddings.shape[0], (n_of_anchors,))
+        if all_class_embeddings.shape[0] > max_authorization_samples:            
+            perm = torch.randperm(all_class_embeddings.shape[0])
+            auth_indices = perm[:min(10, len(perm))]
+            query_indices = perm[min(10, len(perm)):]  # disjoint
 
-        for ind, embedding in enumerate(positive_embeddings):
-            score = 0
-            for ind, anchor in enumerate(positive_embeddings[anchors_idx]):
-                dist = torch.norm(anchor - embedding, p=2)
-                if dist >= threshold:
-                    score += 1
+            auth_embeddings = all_class_embeddings[auth_indices]
+            query_embeddings = all_class_embeddings[query_indices]
 
-            if score >= anchor_threshold:
-                results[label][0][0] += 1
-            else:
-                results[label][0][1] += 1
-                
-        results[label][0] /= len(positive_embeddings)
-                
-        for ind, embedding in enumerate(negative_embeddings):
-            score = 0
-            for ind, anchor in enumerate(positive_embeddings[anchors_idx]):
-                dist = torch.norm(anchor - embedding, p=2)
-                if dist >= threshold:
-                    score += 1
+        # === Positive probes ===
+        sims_pos = torch.matmul(query_embeddings, auth_embeddings.T)  # (Q, 10)
+        topk_sim_pos, _ = sims_pos.topk(k, dim=1)
+        pos_pass = (topk_sim_pos >= (1 - threshold)).any(dim=1)
 
-            if score >= anchor_threshold:
-                results[label][1][0] += 1
-            else:
-                results[label][1][1] += 1
+        results[label][0][0] = pos_pass.sum().item()  # TP
+        results[label][0][1] = (~pos_pass).sum().item()  # FN
+        results[label][0] /= query_embeddings.shape[0]
 
-        results[label][1] /= len(negative_embeddings)
-        
-    print(threshold, results)
+        # === Negative probes ===
+        sims_neg = torch.matmul(all_other_embeddings, auth_embeddings.T)  # (N, 10)
+        topk_sim_neg, _ = sims_neg.topk(k, dim=1)
+        neg_pass = (topk_sim_neg >= (1 - threshold)).any(dim=1)
+
+        results[label][1][0] = neg_pass.sum().item()  # FP
+        results[label][1][1] = (~neg_pass).sum().item()  # TN
+        results[label][1] /= all_other_embeddings.shape[0]
+
+    # Compute accuracy
+    tp = results[:, 0, 0].sum()
+    tn = results[:, 1, 1].sum()
+    fp = results[:, 1, 0].sum()
+    fn = results[:, 0, 1].sum()
+    total = tp + tn + fp + fn
+    accuracy = (tp + tn) / total
+
+    if accuracy > best_accuracy:
+        best_accuracy = accuracy
+        best_results = results.clone()
+        best_threshold = threshold
+
+print(f"Best threshold: {round(best_threshold, 2)} (Accuracy: {best_accuracy:.4f})")
+print(best_results)
+
