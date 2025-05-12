@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 
-# Model Grzesia zeby sprawdic czy to problem w modelu faktycznie
 class EEGNetEmbeddingModel(nn.Module):
     """
     EEGNet model adapted for generating embeddings from EEG data for verification tasks.
@@ -110,7 +109,6 @@ class EEGNetEmbeddingModel(nn.Module):
         self.flatten_layer = nn.Flatten()
 
         self.embedding_layer = nn.Linear(flattened_size, embedding_dimension)
-
 
         self.apply_max_norm_to_layer(self.spatial_conv_block[0], max_norm_depthwise)
 

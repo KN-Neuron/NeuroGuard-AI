@@ -200,4 +200,3 @@ def load_model(model_class, model_path, num_channels, num_samples, embedding_siz
     model.to(device)
 
     return model
-

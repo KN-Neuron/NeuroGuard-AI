@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import numpy as np
-#import seaborn as sns
+import seaborn as sns
+import pandas as pd
+
 
 def plot_predictions(
-    train_data, train_labels, test_data, test_labels, predictions=None
+        train_data, train_labels, test_data, test_labels, predictions=None
 ):
     """
     Plots linear training data and test data and compares predictions.
@@ -56,79 +58,178 @@ def plot_loss_curves(results: dict):
     plt.legend()
 
 
-def plot_loss(history):
+def plot_loss(train_history):
     """Plot training curves with proper metrics for authentication systems"""
+
     plt.figure(figsize=(15, 5))
 
-    plt.plot(history['train_loss'], label='Train Loss')
-    plt.title('Triplet Margin Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
+    plt.plot(train_history["train_loss"], label="Train Loss")
+    plt.title("Triplet Margin Loss")
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
     plt.legend()
 
     plt.tight_layout()
     plt.show()
 
 
-def plot_embeddings(embeddings_data, model_name="EEGNet", perplexity=30, color_based=False):
-    """
-    Visualize embeddings using t-SNE.
+def plot_embeddings_2d(embeddings_2d):
+    plt.figure(figsize=(10, 8))
+    plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], alpha=0.6, s=10, c='blue')
+    plt.title("2D Visualization of Embeddings")
+    plt.xlabel("Dimension 1")
+    plt.ylabel("Dimension 2")
+    plt.grid(True)
+    plt.show()
 
-    Parameters:
-    -----------
-    embeddings_data : dict
-        Dictionary containing embeddings, participant_ids, and labels
-        from extract_embeddings function
-    model_name : str
-        Name of the model for plot title
-    perplexity : int
-        Perplexity parameter for t-SNE (typical values: 5-50)
-    color_based : bool
-        Whether to color points by color label instead of participant ID
-    """
-    embeddings = embeddings_data['embeddings']
-    participant_ids = embeddings_data['participant_ids']
-    labels = embeddings_data['labels']
 
-    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
-    embeddings_2d = tsne.fit_transform(embeddings)
+def plot_embeddings_by_participant(embeddings_2d, participant_ids):
+    unique_participants = np.unique(participant_ids)
+    colors = plt.cm.tab20(np.linspace(0, 1, len(unique_participants)))
 
-    # Create a DataFrame for easier plotting
-    df = pd.DataFrame({
-        'tsne_1': embeddings_2d[:, 0],
-        'tsne_2': embeddings_2d[:, 1],
-        'participant_id': participant_ids,
-        'label': labels
-    })
+    plt.figure(figsize=(10, 8))
 
-    # Create visualization
-    plt.figure(figsize=(12, 10))
-
-    if color_based:
-        # Color by label (red, green, blue, etc.)
-        sns.scatterplot(
-            x='tsne_1', y='tsne_2',
-            hue='label',
-            data=df,
-            palette='viridis',
-            s=50, alpha=0.7
+    for i, participant in enumerate(unique_participants):
+        mask = participant_ids == participant
+        plt.scatter(
+            embeddings_2d[mask, 0],
+            embeddings_2d[mask, 1],
+            label=participant,
+            color=colors[i],
+            alpha=0.6,
+            s=10
         )
-        plt.title(f'{model_name} Embeddings by Color')
-    else:
-        # Color by participant ID
-        sns.scatterplot(
-            x='tsne_1', y='tsne_2',
-            hue='participant_id',
-            data=df,
-            palette='tab20',
-            s=50, alpha=0.7
-        )
-        plt.title(f'{model_name} Embeddings by Participant')
 
-    plt.xlabel('t-SNE Component 1')
-    plt.ylabel('t-SNE Component 2')
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.title("2D Visualization of Embeddings by Participant")
+    plt.xlabel("Dimension 1")
+    plt.ylabel("Dimension 2")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
+    plt.grid(True)
     plt.tight_layout()
     plt.show()
 
-    return embeddings_2d
+
+import umap
+
+
+def plot_UMAP(embeddings_2d, participant_ids):
+    unique_participants = np.unique(participant_ids)
+    colors = plt.cm.tab20(np.linspace(0, 1, len(unique_participants)))
+
+    # Generate UMAP embeddings
+    umap_model = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2)
+    umap_embeddings = umap_model.fit_transform(embeddings_2d)
+
+    # Plot the UMAP embeddings
+    plt.figure(figsize=(10, 8))
+    for i, participant in enumerate(unique_participants):
+        mask = participant_ids == participant
+        plt.scatter(
+            umap_embeddings[mask, 0],
+            umap_embeddings[mask, 1],
+            label=participant,
+            color=colors[i],
+            alpha=0.6,
+            s=10
+        )
+
+    plt.title("UMAP Visualization of Embeddings by Participant")
+    plt.xlabel("UMAP Dimension 1")
+    plt.ylabel("UMAP Dimension 2")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+from sklearn.decomposition import PCA
+
+
+def plot_PCA(test_embeddings, participant_ids):
+    unique_participants = np.unique(participant_ids)
+    colors = plt.cm.tab20(np.linspace(0, 1, len(unique_participants)))
+
+    # Apply PCA to reduce dimensions to 2
+    pca_test = PCA(n_components=2)
+    pca_test_embeddings = pca_test.fit_transform(test_embeddings)
+
+    # Plot the PCA embeddings for test data
+    plt.figure(figsize=(10, 8))
+    for i, participant in enumerate(unique_participants):
+        mask = participant_ids == participant
+        plt.scatter(
+            pca_test_embeddings[mask, 0],
+            pca_test_embeddings[mask, 1],
+            label=participant,
+            color=colors[i],
+            alpha=0.6,
+            s=10
+        )
+
+    plt.title("PCA Visualization of Test Participants")
+    plt.xlabel("PCA Dimension 1")
+    plt.ylabel("PCA Dimension 2")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_tSNE(test_embeddings, participant_ids):
+    unique_participants = np.unique(participant_ids)
+    colors = plt.cm.tab20(np.linspace(0, 1, len(unique_participants)))
+
+    # Apply t-SNE to reduce dimensions to 2
+    tsne_test = TSNE(n_components=2)
+    tsne_test_embeddings = tsne_test.fit_transform(test_embeddings)
+
+    # Plot the t-SNE embeddings for test data
+    plt.figure(figsize=(10, 8))
+    for i, participant in enumerate(unique_participants):
+        mask = participant_ids == participant
+        plt.scatter(
+            tsne_test_embeddings[mask, 0],
+            tsne_test_embeddings[mask, 1],
+            label=participant,
+            color=colors[i],
+            alpha=0.6,
+            s=10
+        )
+
+    plt.title("t-SNE Visualization of Test Participants")
+    plt.xlabel("t-SNE Dimension 1")
+    plt.ylabel("t-SNE Dimension 2")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+def plot_LDA(test_embeddings, participant_ids):
+    unique_participants = np.unique(participant_ids)
+    colors = plt.cm.tab20(np.linspace(0, 1, len(unique_participants)))
+
+    lda_test = LinearDiscriminantAnalysis(n_components=2)
+    lda_test_embeddings = lda_test.fit_transform(test_embeddings, participant_ids)
+
+    # Plot the LDA embeddings for test data
+    plt.figure(figsize=(10, 8))
+
+    for i, participant in enumerate(unique_participants):
+        mask = participant_ids == participant
+        plt.scatter(
+            lda_test_embeddings[mask, 0],
+            lda_test_embeddings[mask, 1],
+            label=participant,
+            color=colors[i],
+            alpha=0.6,
+            s=10
+        )
+
+    plt.title("LDA Visualization of Test Participants")
+    plt.xlabel("LDA Dimension 1")
+    plt.ylabel("LDA Dimension 2")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()

@@ -4,12 +4,12 @@ from torch.utils.data import DataLoader
 
 
 def train_eegnet(
-    model: nn.Module,
-    train_loader: DataLoader,
-    optimizer: torch.optim.Optimizer,
-    device: torch.device,
-    triplet_loss,
-    num_epochs: int = 30,
+        model: nn.Module,
+        train_loader: DataLoader,
+        optimizer: torch.optim.Optimizer,
+        device: torch.device,
+        triplet_loss,
+        num_epochs: int = 30,
 ) -> dict:
     """
     Train an EEGNet model using a triplet loss function.
@@ -53,3 +53,22 @@ def train_eegnet(
         print(f"Epoch {epoch + 1}/{num_epochs} | Train Loss: {avg_loss:.4f}")
 
     return train_history
+
+
+import numpy as np
+
+
+def generate_embeddings_2d(eegnet_model, test_loader, device):
+    # Generate test embeddings
+    eegnet_model.eval()  # Set the model to evaluation mode
+    test_embeddings = []
+
+    with torch.no_grad():  # Disable gradient computation
+        for anchor, positive, negative in test_loader:
+            anchor = anchor.to(device)
+            embeddings = eegnet_model(anchor)
+            test_embeddings.append(embeddings.cpu().numpy())
+
+    # Concatenate all embeddings into a single array
+    test_embeddings = np.concatenate(test_embeddings, axis=0)
+    return test_embeddings
