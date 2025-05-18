@@ -48,7 +48,8 @@ def set_seeds(seed: int = 42):
     torch.cuda.manual_seed(seed)
 
 
-def train_test_split_eeg(df, test_size=0.2, random_state=42):
+def train_test_split_eeg(df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42) -> tuple[
+    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Split a DataFrame into training and testing sets.
 
@@ -77,7 +78,7 @@ class EEGTripletDataset(Dataset):
     with triplet margin loss.
     """
 
-    def __init__(self, eeg_df):
+    def __init__(self, eeg_df: pd.DataFrame):
         """
         Initialize the EEG triplet dataset.
 
@@ -88,7 +89,6 @@ class EEGTripletDataset(Dataset):
         """
         self.eeg_df = eeg_df
 
-        # Group indices by participant_id
         self.participant_to_indices = {}
         for idx, (_, row) in enumerate(eeg_df.iterrows()):
             participant_id = row['participant_id']
@@ -96,14 +96,13 @@ class EEGTripletDataset(Dataset):
                 self.participant_to_indices[participant_id] = []
             self.participant_to_indices[participant_id].append(idx)
 
-        # Get list of unique participant IDs
         self.participants = list(self.participant_to_indices.keys())
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the total number of samples in the dataset"""
         return len(self.eeg_df)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Get a triplet (anchor, positive, negative) for training.
 
@@ -133,70 +132,3 @@ class EEGTripletDataset(Dataset):
         negative = torch.tensor(negative_row['epoch'], dtype=torch.float32).unsqueeze(0)
 
         return anchor, positive, negative
-
-
-def save_model(model, model_name, save_dir="saved_models"):
-    """
-    Save a trained model to disk.
-
-    Parameters:
-    -----------
-    model : torch.nn.Module
-        Trained EEGNet or FBCNet model
-    model_name : str
-        Name to identify the model (e.g., 'eegnet_triplet')
-    save_dir : str
-        Directory to save the model
-    """
-    # Create directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
-
-    # Save model state dictionary
-    model_path = os.path.join(save_dir, f"{model_name}.pt")
-    torch.save(model.state_dict(), model_path)
-    print(f"Model saved to {model_path}")
-
-    # Optionally save the entire model
-    full_model_path = os.path.join(save_dir, f"{model_name}_full.pt")
-    torch.save(model, full_model_path)
-    print(f"Full model saved to {full_model_path}")
-
-
-def load_model(model_class, model_path, num_channels, num_samples, embedding_size=32, device="cpu"):
-    """
-    Load a saved model for inference.
-
-    Parameters:
-    -----------
-    model_class : class
-        Model class (EEGNet or FBCNet)
-    model_path : str
-        Path to the saved model file
-    num_channels : int
-        Number of EEG channels
-    num_samples : int
-        Number of time samples
-    embedding_size : int
-        Size of the embedding vector
-    device : str
-        Device to load the model to
-
-    Returns:
-    --------
-    torch.nn.Module
-        Loaded model ready for inference
-    """
-    # Initialize model architecture
-    if model_class.__name__ == "FBCNet":
-        model = model_class(num_channels, num_samples, embedding_size, num_bands=9)
-    else:
-        model = model_class(num_channels, num_samples, embedding_size)
-
-    # Load model weights
-    model.load_state_dict(torch.load(model_path, map_location=device))
-
-    # Set model to evaluation mode
-    model.eval()
-    model.to(device)
-
-    return model

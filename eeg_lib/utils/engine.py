@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import numpy as np
+
+from eeg_lib.models.similarity.eegnet import EEGNetEmbeddingModel
 
 
 def train_eegnet(
@@ -10,7 +13,7 @@ def train_eegnet(
         device: torch.device,
         triplet_loss,
         num_epochs: int = 30,
-) -> dict:
+) -> dict[str, list]:
     """
     Train an EEGNet model using a triplet loss function.
 
@@ -55,20 +58,28 @@ def train_eegnet(
     return train_history
 
 
-import numpy as np
+def generate_embeddings_2d(eegnet_model: nn.Module, test_loader: DataLoader, device: torch.device) -> np.ndarray:
+    """
+    Generate test embeddings using a trained EEGNet model.
 
+    Args:
+        eegnet_model (nn.Module): Trained EEGNet model.
+        test_loader (DataLoader): DataLoader containing EEG data in the format
+            (anchor, positive, negative).
+        device (torch.device): Device to run inference on.
 
-def generate_embeddings_2d(eegnet_model, test_loader, device):
-    # Generate test embeddings
-    eegnet_model.eval()  # Set the model to evaluation mode
+    Returns:
+        np.ndarray: 2D array with shape (num_test_samples, embedding_dim) containing
+            the embeddings for all test samples.
+    """
+    eegnet_model.eval()
     test_embeddings = []
 
-    with torch.no_grad():  # Disable gradient computation
+    with torch.no_grad():
         for anchor, positive, negative in test_loader:
             anchor = anchor.to(device)
             embeddings = eegnet_model(anchor)
             test_embeddings.append(embeddings.cpu().numpy())
 
-    # Concatenate all embeddings into a single array
     test_embeddings = np.concatenate(test_embeddings, axis=0)
     return test_embeddings
