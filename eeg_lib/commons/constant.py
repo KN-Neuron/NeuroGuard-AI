@@ -25,3 +25,6 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")
 sys.path.append(project_root)
 
 DATASETS_FOLDER: str = os.path.join(project_root, "eeg_lib/data/datasets")
+RESULTS_FOLDER: str = os.path.join(project_root, "eeg_lib/data/result_summaries")
+
+NUM_WORKERS = os.cpu_count() or 1

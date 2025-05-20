@@ -16,6 +16,10 @@ tqdm = "4.67.1"
 mne = "1.9.0"
 triton = { version = "3.2.0", optional = true }
 pyright = "^1.1.395"
+scikit-learn = "^1.6.1"
+tensorboard = "^2.19.0"
+umap = "^0.1.1"
+umap-learn = "^0.5.7"
 
 [tool.poetry.extras]
 gpu = ["triton"]
