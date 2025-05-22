@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.manifold import TSNE
 import numpy as np
+import pandas as pd
 import umap
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.decomposition import PCA
@@ -227,4 +229,89 @@ def plot_LDA(test_embeddings: np.ndarray, participant_ids: np.ndarray):
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
     plt.grid(True)
     plt.tight_layout()
+    plt.show()
+
+def plot_sample_signal(sample: pd.DataFrame):
+    """
+    Plot the sample signal from the first channel of the provided data.
+
+    Parameters
+    ----------
+    sample : pd.DataFrame
+        DataFrame containing the signal data to be plotted. The signal from
+        the first column (channel) will be plotted.
+
+    This function creates a plot of the signal over time for the first channel
+    and displays it with appropriate labels for the axes and a title.
+    """
+    plt.figure(figsize=(15, 7))
+    plt.plot(sample[0])
+    plt.xlabel('Time')
+    plt.title('Sample signal from first channel')
+    plt.ylabel('Amplitude')
+    plt.show()
+
+def plot_sample_signals(sample: pd.DataFrame):
+    """
+    Plot the sample signals from all channels of the provided data.
+
+    Parameters
+    ----------
+    sample : pd.DataFrame
+        DataFrame containing the signal data to be plotted. Each column
+        represents a different channel.
+
+    This function creates a plot for signals from all channels over time
+    and displays it with appropriate labels for the axes and a legend for
+    channel identification.
+    """
+    plt.figure(figsize=(15, 7))
+    for channel in sample:
+        plt.plot(channel, alpha=0.5)
+        plt.xlabel('Time')
+        plt.ylabel('Amplitude')
+    plt.title(f'Sample signal from all channels')
+    plt.legend(['channel 1', 'channel 2', 'channel 3', 'channel 4'])
+    plt.show()
+
+def plot_first_channel(eeg_df: pd.DataFrame):
+    """
+    Plot the first channel signal from all participants in the provided DataFrame.
+
+    Parameters
+    ----------
+    eeg_df : pd.DataFrame
+        DataFrame containing the signal data to be plotted. Each row contains
+        a single participant's data, and the 'epoch' column contains the signal
+        data for that participant. The first column (channel) will be plotted.
+
+    This function creates a plot for the first channel signal from all
+    participants over time and displays it with appropriate labels for the
+    axes and a title.
+    """
+    plt.figure(figsize=(15, 7))
+    for signal in eeg_df['epoch'].iloc:
+        plt.plot(signal[0], alpha=0.5)
+        plt.xlabel('Time')
+        plt.ylabel('Amplitude')
+    plt.title(f'First channel signal from all participants')
+    plt.show()
+
+def plot_confusion_matrix(conf_matrix: np.ndarray):
+    """
+    Plot a confusion matrix using a heatmap.
+
+    Parameters
+    ----------
+    conf_matrix : array-like
+        The confusion matrix to be visualized.
+
+    This function creates a heatmap representation of the given confusion matrix
+    and displays it with labeled axes and a title.
+    """
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues")
+    plt.xlabel("Predicted labels")
+    plt.ylabel("True labels")
+    plt.title("Confusion matrix")
     plt.show()

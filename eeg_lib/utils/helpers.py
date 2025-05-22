@@ -132,3 +132,57 @@ class EEGTripletDataset(Dataset):
         negative = torch.tensor(negative_row['epoch'], dtype=torch.float32).unsqueeze(0)
 
         return anchor, positive, negative
+
+
+def create_user_profiles(embeddings_2d: np.ndarray, participant_ids: np.ndarray) -> dict[str:[float]]:
+    """
+    Create a dictionary of user profiles from 2D embeddings and participant IDs.
+
+    Parameters
+    ----------
+    embeddings_2d : np.ndarray
+        2D embeddings of EEG data points
+    participant_ids : np.ndarray
+        Array of participant IDs matching the embeddings
+
+    Returns
+    -------
+    dict[str:[float]]
+        Dictionary of user profiles where each key is a participant ID and the
+        value is a 2D array representing the mean embedding of that participant
+    """
+    unique_participants = np.unique(participant_ids)
+    user_profiles = {}
+
+    for participant in unique_participants:
+        mask = participant_ids == participant
+        user_profiles[participant] = embeddings_2d[mask].mean(axis=0)
+
+    return user_profiles
+
+
+def predict_ids(embeddings_2d: np.ndarray, user_profiles: dict) -> list:
+    """
+    Predict the participant IDs of EEG data points given their embeddings and a dictionary of user profiles.
+
+    Parameters
+    ----------
+    embeddings_2d : np.ndarray
+        2D embeddings of EEG data points
+    user_profiles : dict
+        Dictionary of user profiles where each key is a participant ID and the
+        value is a 2D array representing the mean embedding of that participant
+
+    Returns
+    -------
+    list
+        List of predicted participant IDs
+    """
+    predicted_ids = []
+
+    for embedding in embeddings_2d:
+        # Find the closest user profile
+        closest_participant = min(user_profiles.keys(), key=lambda pid: np.linalg.norm(embedding - user_profiles[pid]))
+        predicted_ids.append(closest_participant)
+
+    return predicted_ids
