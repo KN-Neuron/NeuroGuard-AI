@@ -315,3 +315,26 @@ def plot_confusion_matrix(conf_matrix: np.ndarray):
     plt.ylabel("True labels")
     plt.title("Confusion matrix")
     plt.show()
+
+def plot_PSD(sample: pd.DataFrame):
+    """
+    Plot the Power Spectral Density (PSD) of signals from all channels in the provided sample.
+
+    Parameters
+    ----------
+    sample : pd.DataFrame
+        DataFrame containing the signal data to be analyzed. Each column
+        represents a different channel.
+
+    This function calculates and plots the PSD for each channel in the sample
+    and displays it with appropriate labels for the axes and a legend for
+    channel identification.
+    """
+    plt.figure(figsize=(15, 7))
+    for channel in sample:
+        f, Pxx_den = plt.psd(channel, NFFT=256, Fs=1.0, alpha=0.5)
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Power Spectral Density (dB/Hz)')
+    plt.title('Power Spectral Density (PSD) for all channels for sample')
+    plt.legend(['channel 1', 'channel 2', 'channel 3', 'channel 4'])
+    plt.show()
