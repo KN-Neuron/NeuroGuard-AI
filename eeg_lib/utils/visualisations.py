@@ -4,6 +4,7 @@ import os
 import matplotlib.patches as mpatches
 from typing import Optional, List, Union, Tuple, Any
 from matplotlib.colors import Colormap, ListedColormap
+from scipy.spatial.distance import cdist
 
 def plot_predictions(
     train_data, train_labels, test_data, test_labels, predictions=None
@@ -184,3 +185,142 @@ def create_handles(y: np.ndarray, cmap: Colormap) -> List[mpatches.Patch]:
         patch = mpatches.Patch(color=color, label=str(unique_ids[i]))
         handles.append(patch)
     return handles
+
+
+def plot_distance_distribution_on_ax(
+    embeddings: np.ndarray,
+    participant_ids: np.ndarray,
+    ax: plt.Axes,
+    distance_type: str = "euclidean",
+    bins: int = 30,
+):
+    """
+    Given a set of embeddings (shape=(N, D)) and their participant IDs (shape=(N,)),
+    compute pairwise distances (genuine vs. imposter) and plot two histograms
+    (genuine in blue, imposter in orange) onto the provided Axes.
+
+    Args:
+        embeddings (np.ndarray): Array of shape (N, D).
+        participant_ids (np.ndarray): 1-D array of shape (N,) containing integer or string IDs.
+        ax (plt.Axes): Matplotlib Axes on which to draw the histograms.
+        distance_type (str): "euclidean" or "cosine". Defaults to "euclidean".
+        bins (int): Number of bins for each histogram. Defaults to 30.
+    """
+    N = embeddings.shape[0]
+    # Compute the full N×N distance matrix once:
+    all_dists = cdist(embeddings, embeddings, metric=distance_type)
+
+
+    genuine = []
+    imposter = []
+    for i in range(N):
+        for j in range(i + 1, N):
+            d = all_dists[i, j]
+            if participant_ids[i] == participant_ids[j]:
+                genuine.append(d)
+            else:
+                imposter.append(d)
+
+    ax.hist(
+        genuine,
+        bins=bins,
+        alpha=0.5,
+        color="tab:blue",
+        label="Genuine",
+        density=False,
+    )
+    ax.hist(
+        imposter,
+        bins=bins,
+        alpha=0.5,
+        color="tab:orange",
+        label="Imposter",
+        density=False,
+    )
+    ax.set_title(f"{distance_type.capitalize()} Distances")
+    ax.set_xlabel(f"{distance_type.capitalize()} Distance")
+    ax.set_ylabel("Count")
+    ax.legend()
+
+def plot_threshold_metrics(
+    thresholds: np.ndarray,
+    fnr_list: np.ndarray,
+    fpr_list: np.ndarray,
+    acc_list: np.ndarray,
+    best_threshold: float,
+    best_fnr: float,
+    best_fpr: float,
+    best_acc: float
+) -> None:
+    """
+    Produce a two‐panel plot:
+      (a) FNR & FPR vs. Threshold
+      (b) Accuracy vs. Threshold
+    and mark the best_threshold as a vertical line.
+
+    Args:
+        thresholds (np.ndarray): shape = (num_thresholds,)
+        fnr_list (np.ndarray): shape = (num_thresholds,)
+        fpr_list (np.ndarray): shape = (num_thresholds,)
+        acc_list (np.ndarray): shape = (num_thresholds,)
+        best_threshold (float): threshold which maximizes accuracy
+        best_fnr (float): FNR at best_threshold
+        best_fpr (float): FPR at best_threshold
+        best_acc (float): Accuracy at best_threshold
+    """
+    plt.figure(figsize=(12, 5))
+
+    # (a) FNR & FPR vs. Threshold
+    ax1 = plt.subplot(1, 2, 1)
+    ax1.plot(thresholds, fnr_list, label="False‐Reject Rate (FNR)", color="tab:blue")
+    ax1.plot(thresholds, fpr_list, label="False‐Accept Rate (FPR)", color="tab:orange")
+    ax1.axvline(
+        best_threshold, color="white", linestyle="--", linewidth=1.2,
+        label=f"Chosen T = {best_threshold:.3f}"
+    )
+    ax1.set_xlabel("Distance Threshold")
+    ax1.set_ylabel("Error Rate")
+    ax1.set_title("FNR & FPR vs. Threshold")
+    ax1.legend(loc="upper right")
+    ax1.grid(alpha=0.3)
+
+    # (b) Accuracy vs. Threshold
+    ax2 = plt.subplot(1, 2, 2)
+    ax2.plot(thresholds, acc_list, label="Overall Accuracy", color="tab:green")
+    ax2.axvline(
+        best_threshold, color="white", linestyle="--", linewidth=1.2,
+        label=f"max Acc = {best_acc*100:.1f}% at T = {best_threshold:.3f}"
+    )
+    ax2.set_xlabel("Distance Threshold")
+    ax2.set_ylabel("Accuracy")
+    ax2.set_title("Verification Accuracy vs. Threshold")
+    ax2.legend(loc="lower right")
+    ax2.grid(alpha=0.3)
+
+    plt.suptitle("Threshold Selection: FNR, FPR and Overall Accuracy")
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+def plot_f1_vs_threshold(
+    thresholds: np.ndarray,
+    f1_list: np.ndarray,
+    best_threshold: float,
+    best_f1: float
+) -> None:
+    """
+    Draw F1‐score versus threshold, and mark the chosen best_threshold.
+    """
+    plt.figure(figsize=(8, 5))
+    plt.plot(thresholds, f1_list, color="tab:purple", label="F₁ Score")
+    plt.axvline(
+        best_threshold,
+        color="white", linestyle="--", linewidth=1.2,
+        label=f"best T = {best_threshold:.3f}\nmax F₁ = {best_f1:.3f}"
+    )
+    plt.title("F₁ Score vs. Distance Threshold")
+    plt.xlabel("Distance Threshold")
+    plt.ylabel("F₁ Score")
+    plt.legend(loc="lower right")
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.show()

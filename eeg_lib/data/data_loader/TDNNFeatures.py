@@ -40,9 +40,9 @@ def apply_dct(log_energy, n_coeffs=7):
 
 
 # Full pipeline
-def extract_features(eeg_sample, frame_length=50):
+def extract_features(eeg_sample, frame_length=50, trunc=750, fs=250):
     # Truncate to 750 timesteps
-    eeg_trunc = eeg_sample[:, :750]
+    eeg_trunc = eeg_sample[:, :trunc]
     n_channels, n_timesteps = eeg_trunc.shape
     n_frames = n_timesteps // frame_length
 
@@ -53,7 +53,7 @@ def extract_features(eeg_sample, frame_length=50):
     stft_magnitudes = np.zeros((n_channels, n_frames, frame_length // 2 + 1))
     for c in range(n_channels):
         for f_idx in range(n_frames):
-            _, _, Zxx = stft(frames[c, f_idx], fs=250, nperseg=frame_length)
+            _, _, Zxx = stft(frames[c, f_idx], fs=fs, nperseg=frame_length)
 
             stft_magnitudes[c, f_idx] = np.mean(np.abs(Zxx), axis=1)
 

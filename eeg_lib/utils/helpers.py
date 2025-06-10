@@ -8,6 +8,7 @@ from datetime import datetime
 import os
 import numpy as np
 import pandas as pd
+from scipy.spatial.distance import cdist
 
 
 def accuracy_fn(y_true: torch.Tensor, y_pred: torch.Tensor):
@@ -163,3 +164,222 @@ def split_train_test(
     print("Test labels:", np.unique(y_test))
 
     return X_train, X_test, y_train, y_test
+
+def compute_genuine_imposter_distances(
+    embeddings: np.ndarray,
+    ids: np.ndarray,
+    user_profiles: dict,
+    distance_metric: str = "euclidean"
+) -> (np.ndarray, np.ndarray):
+    """
+    Given embeddings and their user IDs, compute:
+      - genuine_dists: distance(emb_i, profile[user_i])
+      - imposter_dists: distance(emb_i, profile[user_j])
+
+    Args:
+        embeddings (np.ndarray): shape = (N, D). N - num samples, D - embedding dimension.
+        ids (np.ndarray): shape = (N,), integer or string IDs of user profiles
+        user_profiles (dict): { user_id: mean_embedding (D,) } from training set.
+        distance_metric (str): "euclidean" or "cosine".
+
+    Returns:
+        genuine_dists (np.ndarray): shape = (N,)
+        imposter_dists (np.ndarray): shape = (N * (num_users-1),)
+    """
+    N, D = embeddings.shape
+    unique_pids = list(user_profiles.keys())
+
+    genuine_dists = np.zeros(N, dtype=float)
+    imposter_dists_list = []
+
+    profile_matrix = np.vstack([user_profiles[pid] for pid in unique_pids])
+    pid_to_index = { pid: idx for idx, pid in enumerate(unique_pids) }
+
+    # Compute pairwise distance matrix from each embedding to every user_profile:
+    all_dist_to_profiles = cdist(embeddings, profile_matrix, metric=distance_metric)
+
+    for i in range(N):
+        pid_i = ids[i]
+        idx_i = pid_to_index[pid_i]
+        # genuine distance = distance to the profile of the correct subject
+        genuine_dists[i] = all_dist_to_profiles[i, idx_i]
+
+        # imposter distances = distances to all other profiles
+        for j in range(len(unique_pids)):
+            if j == idx_i:
+                continue
+            imposter_dists_list.append(all_dist_to_profiles[i, j])
+
+    return genuine_dists, np.array(imposter_dists_list)
+
+def compute_threshold_metrics(
+    genuine_dists: np.ndarray,
+    imposter_dists: np.ndarray,
+    num_thresholds: int = 200
+) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, float, float, float):
+    """
+    Given arrays of genuine/imposter distances, sweep a range of thresholds
+    and compute FNR, FPR, and Accuracy. Also identify the threshold
+    at Equal Error Rate (EER) where FNR = FPR.
+
+    Args:
+        outputs of compute_genuine_imposter_distances:
+        genuine_dists (np.ndarray): shape = (N_genuine,)
+        imposter_dists (np.ndarray): shape = (N_imposter,)
+
+        num_thresholds (int): how many evenly‐spaced thresholds to try.
+
+    Returns:
+        thresholds      (np.ndarray): shape = (num_thresholds,)
+        fnr_list        (np.ndarray): shape = (num_thresholds,)
+        fpr_list        (np.ndarray): shape = (num_thresholds,)
+        acc_list        (np.ndarray): shape = (num_thresholds,)
+        eer_threshold   (float): threshold at Equal Error Rate (EER)
+        eer_fnr         (float): FNR at EER point
+        eer_fpr         (float): FPR at EER point  
+        eer_acc         (float): Accuracy at EER point
+    """
+    num_genuine = float(len(genuine_dists))
+    num_imposter = float(len(imposter_dists))
+    total_pairs = num_genuine + num_imposter
+
+    # Build grid of thresholds from min to max observed distance
+    all_distances = np.concatenate([genuine_dists, imposter_dists])
+    t_min = np.min(all_distances)
+    t_max = np.max(all_distances)
+    thresholds = np.linspace(t_min, t_max, num_thresholds)
+
+    fnr_list = np.zeros(num_thresholds, dtype=float)
+    fpr_list = np.zeros(num_thresholds, dtype=float)
+    acc_list = np.zeros(num_thresholds, dtype=float)
+
+    for idx, T in enumerate(thresholds):
+        # false rejects = genuine distances > T
+        false_rejects = np.sum(genuine_dists > T)
+        fnr = false_rejects / num_genuine
+
+        # false accepts = imposter distances <= T
+        false_accepts = np.sum(imposter_dists <= T)
+        fpr = false_accepts / num_imposter
+
+        true_accepts = num_genuine - false_rejects
+        true_rejects = num_imposter - false_accepts
+        accuracy = (true_accepts + true_rejects) / total_pairs
+
+        fnr_list[idx] = fnr
+        fpr_list[idx] = fpr
+        acc_list[idx] = accuracy
+
+    # Find EER point
+    eer_diff = np.abs(fnr_list - fpr_list)
+    eer_idx = np.argmin(eer_diff)
+    
+    eer_threshold = thresholds[eer_idx]
+    eer_fnr = fnr_list[eer_idx]
+    eer_fpr = fpr_list[eer_idx]
+    eer_acc = acc_list[eer_idx]
+
+    return (
+        thresholds, fnr_list, fpr_list, acc_list,
+        eer_threshold, eer_fnr, eer_fpr, eer_acc
+    )
+
+def compute_f1_vs_threshold(
+    genuine_dists: np.ndarray,
+    imposter_dists: np.ndarray,
+    num_thresholds: int = 200
+) -> (np.ndarray, np.ndarray, float, float):
+    """
+    compute F1-score for a range of thresholds T:
+      - "positive" = genuine pair  (label = 1)
+      - "negative" = imposter pair (label = 0)
+
+    Returns:
+      thresholds (shape = (num_thresholds,)),
+      f1_list    (shape = (num_thresholds,)),
+
+      best_threshold (float),
+      best_f1        (float)
+    """
+    # Number of genuine/imposter pairs:
+    Pg = float(len(genuine_dists))
+    Pi = float(len(imposter_dists))
+
+    all_d = np.concatenate([genuine_dists, imposter_dists])
+    t_min, t_max = np.min(all_d), np.max(all_d)
+    thresholds = np.linspace(t_min, t_max, num_thresholds)
+
+    f1_list = np.zeros(num_thresholds, dtype=float)
+
+    for idx, T in enumerate(thresholds):
+        # Predictions for genuine: positive if d ≤ T
+        TP = np.sum(genuine_dists <= T)
+        FN = np.sum(genuine_dists > T)
+
+        # Predictions for imposter: positive if d ≤ T (false accepts)
+        FP = np.sum(imposter_dists <= T)
+        TN = np.sum(imposter_dists > T)
+
+        # Precision = TP / (TP + FP); Recall = TP / (TP + FN)
+        if (TP + FP) > 0:
+            precision = TP / float(TP + FP)
+        else:
+            precision = 0.0
+        if (TP + FN) > 0:
+            recall = TP / float(TP + FN)
+        else:
+            recall = 0.0
+
+        if precision + recall > 0:
+            f1 = 2.0 * (precision * recall) / (precision + recall)
+        else:
+            f1 = 0.0
+
+        f1_list[idx] = f1
+
+    best_idx = np.argmax(f1_list)
+    best_threshold = thresholds[best_idx]
+    best_f1 = f1_list[best_idx]
+
+    return thresholds, f1_list, best_threshold, best_f1
+
+def split_test_data_for_verification(test_embeddings, test_ids, profile_ratio=0.6):
+    """
+    Split test data into profile creation and verification portions.
+    
+    Args:
+        test_embeddings: Test embeddings array
+        test_ids: Test subject IDs
+        profile_ratio: Ratio of test data to use for creating profiles
+        
+    Returns:
+        profile_embeddings, profile_ids, verify_embeddings, verify_ids
+    """
+    unique_subjects = np.unique(test_ids)
+    
+    # For each subject, split their samples
+    profile_embeddings_list = []
+    profile_ids_list = []
+    verify_embeddings_list = []
+    verify_ids_list = []
+    
+    for subject_id in unique_subjects:
+        subject_mask = test_ids == subject_id
+        subject_embeddings = test_embeddings[subject_mask]
+        subject_samples = len(subject_embeddings)
+        
+        # Need at least 2 samples per subject
+        if subject_samples < 2:
+            continue
+            
+        profile_samples = max(1, int(subject_samples * profile_ratio))
+        
+        # Split subject's data
+        profile_embeddings_list.extend(subject_embeddings[:profile_samples])
+        profile_ids_list.extend([subject_id] * profile_samples)
+        
+        verify_embeddings_list.extend(subject_embeddings[profile_samples:])
+        verify_ids_list.extend([subject_id] * (subject_samples - profile_samples))
+    
+    return (np.array(profile_embeddings_list), np.array(profile_ids_list),
+            np.array(verify_embeddings_list), np.array(verify_ids_list))
