@@ -1,5 +1,6 @@
 import os
 from typing import Optional, Tuple, List, Dict, Any
+import numpy as np
 
 
 import mne
@@ -103,6 +104,40 @@ class EEGDataExtractor:
                         "label": label,
                     }
                 )
+        df = pd.DataFrame(data)
+        return df, participants
+
+    def extract_erp_dataframe(self) -> Tuple[pd.DataFrame, List[Dict[str, Any]]]:
+        """
+        Iterates over each participant's data, computes ERP by averaging epochs per label,
+        and returns a DataFrame with columns: participant_id, label, erp.
+        Also returns a list of participants with metadata.
+        """
+        eeg_and_events, participants = self._load_eeg()
+        data = []
+
+        for item in eeg_and_events:
+            participant_id = item["participant_id"]
+            epochs = item["epochs"]
+            labels = item["labels"]
+            epoch_data = epochs.get_data()  # shape: (n_epochs, n_channels, n_times)
+
+            # Group epochs by label and average to form ERP
+            label_to_epochs = {}
+            for i, label in enumerate(labels):
+                if label not in label_to_epochs:
+                    label_to_epochs[label] = []
+                label_to_epochs[label].append(epoch_data[i])
+
+            for label, epoch_list in label_to_epochs.items():
+                erp = np.mean(epoch_list, axis=0)  # shape: (n_channels, n_times)
+                erp = np.mean(erp, axis =0)
+                data.append({
+                    "participant_id": participant_id,
+                    "label": label,
+                    "erp": erp
+                })
+
         df = pd.DataFrame(data)
         return df, participants
 

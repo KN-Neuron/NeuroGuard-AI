@@ -181,3 +181,6 @@ datasets
 *.fif
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+gridsearch.ipynb
+
+*.json
