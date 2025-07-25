@@ -10,6 +10,16 @@ def add_gaussian_noise(eeg, std=0.01):
     return eeg + noise
 
 
+def get_dataset(hparams, X_train, y_train):
+    augmentation = hparams["augmentation"]
+    batch_size = hparams["batch_size"]
+    std = hparams["std"]
+
+    dataset = TDNNDataset(X_train, y_train, augmentation=augmentation, std=std)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    return dataloader
+
 
 class TDNNDataset(Dataset):
     def __init__(self, data, labels, augmentation=False, std=0.01):

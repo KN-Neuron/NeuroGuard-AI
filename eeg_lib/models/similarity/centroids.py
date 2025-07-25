@@ -1,6 +1,8 @@
 import numpy as np
 from poetry.console.commands import self
 import torch
+from sklearn.preprocessing import MinMaxScaler
+
 
 class SimilarityCentroidsVerifier(object):
     """
@@ -146,3 +148,31 @@ class SimilarityCentroidsVerifier(object):
             distances = np.linalg.norm(embeddings_label - self.centroids[label], axis=1)
             avg_distances[label] = np.mean(distances)
         return avg_distances
+
+
+def get_accuracy(embd, test_embd, y_train_encoded, y_test_encoded):
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    train_normalized = scaler.fit_transform(embd)
+    test_normalized = scaler.transform(test_embd)
+    centroid_verifier_actual = SimilarityCentroidsVerifier()
+
+    centroid_verifier_actual.compute_true_centroids(y_train_encoded, train_normalized)
+    train_acc = 0
+    for i in range(len(train_normalized)):
+        true_label = y_train_encoded[i]
+        predicted_label, _ = centroid_verifier_actual.classify_embedding(train_normalized[i])
+        if predicted_label == true_label:
+            train_acc += 1
+    train_acc = train_acc / len(train_normalized)
+
+    centroid_verifier_actual_test = SimilarityCentroidsVerifier()
+    centroid_verifier_actual_test.compute_true_centroids(y_test_encoded, test_normalized)
+    test_acc = 0
+    for i in range(len(test_normalized)):
+        true_label = y_test_encoded[i]
+        predicted_label, _ = centroid_verifier_actual_test.classify_embedding(test_normalized[i])
+        if predicted_label == true_label:
+            test_acc += 1
+    test_acc = test_acc / len(test_normalized)
+
+    return train_acc, test_acc

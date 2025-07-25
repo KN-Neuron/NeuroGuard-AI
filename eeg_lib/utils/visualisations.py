@@ -242,6 +242,73 @@ def plot_distance_distribution_on_ax(
     ax.set_ylabel("Count")
     ax.legend()
 
+def plot_distance_distribution_return(
+    embeddings: np.ndarray,
+    participant_ids: np.ndarray,
+    distance_type: str = "euclidean",
+    bins: int = 30,
+    figsize: tuple[int,int]=(6,4),
+) -> plt.Figure:
+    """
+    Returns a Figure containing histograms of genuine vs. imposter distances.
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+    N = embeddings.shape[0]
+    all_dists = cdist(embeddings, embeddings, metric=distance_type)
+
+    genuine, imposter = [], []
+    for i in range(N):
+        for j in range(i+1, N):
+            (genuine if participant_ids[i]==participant_ids[j] else imposter).append(all_dists[i,j])
+
+    ax.hist(genuine, bins=bins, alpha=0.5, color="tab:blue", label="Genuine")
+    ax.hist(imposter, bins=bins, alpha=0.5, color="tab:orange", label="Imposter")
+
+    ax.set_title(f"{distance_type.title()} Distances")
+    ax.set_xlabel("Distance")
+    ax.set_ylabel("Count")
+    ax.legend()
+    plt.tight_layout()
+    return fig
+
+
+def plot_threshold_metrics_return(
+    thresholds: np.ndarray,
+    fnr_list: np.ndarray,
+    fpr_list: np.ndarray,
+    acc_list: np.ndarray,
+    best_threshold: float,
+    best_fnr: float,
+    best_fpr: float,
+    best_acc: float,
+    figsize: tuple[int,int]=(12,5),
+) -> plt.Figure:
+    """
+    Returns a two‐panel figure showing FNR/FPR vs threshold and Accuracy vs threshold.
+    """
+    fig, (ax1,ax2) = plt.subplots(1,2,figsize=figsize)
+
+    ax1.plot(thresholds, fnr_list, label="FNR", color="tab:blue")
+    ax1.plot(thresholds, fpr_list, label="FPR", color="tab:orange")
+    ax1.axvline(best_threshold, color="white", ls="--", label=f"T*={best_threshold:.3f}")
+    ax1.set_title("FNR & FPR vs Threshold")
+    ax1.set_xlabel("Threshold"); ax1.set_ylabel("Error Rate")
+    ax1.legend()
+    ax1.grid(alpha=0.3)
+
+    ax2.plot(thresholds, acc_list, label="Accuracy", color="tab:green")
+    ax2.axvline(best_threshold, color="white", ls="--",
+                label=f"Acc={best_acc*100:.1f}%@{best_threshold:.3f}")
+    ax2.set_title("Accuracy vs Threshold")
+    ax2.set_xlabel("Threshold"); ax2.set_ylabel("Accuracy")
+    ax2.legend()
+    ax2.grid(alpha=0.3)
+
+    fig.suptitle("Threshold Selection")
+    plt.tight_layout(rect=[0,0,1,0.95])
+    return fig
+
+
 def plot_threshold_metrics(
     thresholds: np.ndarray,
     fnr_list: np.ndarray,
@@ -300,6 +367,29 @@ def plot_threshold_metrics(
     plt.suptitle("Threshold Selection: FNR, FPR and Overall Accuracy")
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
+
+
+def plot_f1_vs_threshold_return(
+    thresholds: np.ndarray,
+    f1_list: np.ndarray,
+    best_threshold: float,
+    best_f1: float,
+    figsize: tuple[int,int]=(8,5),
+) -> plt.Figure:
+    """
+    Returns a figure of F1‐score vs threshold, marking the best point.
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.plot(thresholds, f1_list, color="tab:purple", label="F1")
+    ax.axvline(best_threshold, color="white", ls="--",
+               label=f"F1={best_f1:.3f}@{best_threshold:.3f}")
+    ax.set_title("F1 vs Threshold")
+    ax.set_xlabel("Threshold"); ax.set_ylabel("F1 Score")
+    ax.legend(); ax.grid(alpha=0.3)
+    plt.tight_layout()
+    return fig
+
+
 
 def plot_f1_vs_threshold(
     thresholds: np.ndarray,
