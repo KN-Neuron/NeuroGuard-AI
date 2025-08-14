@@ -1,0 +1,62 @@
+[
+  {
+    "params": {
+      "hfreq": 100.0,
+      "lfreq": 7.0,
+      "notch_filter": [
+        50
+      ],
+      "tmax": 5.0,
+      "tmin": 2.0
+    },
+    "final_loss": 0.003090981740410065,
+    "centroid_train_acc": 0.9444444444444444,
+    "centroid_test_acc": 0.6525179856115108,
+    "final_train_acc": 1.0,
+    "final_train_eer": 0.0,
+    "final_train_f1": 1.0,
+    "final_test_acc": 0.7879330943847073,
+    "final_test_f1": 0.5863596102745793,
+    "final_test_eer": 0.2168458781362007
+  },
+  {
+    "params": {
+      "hfreq": 100.0,
+      "lfreq": 7.0,
+      "notch_filter": [
+        50
+      ],
+      "tmax": 5.0,
+      "tmin": 0.0
+    },
+    "final_loss": 0.0016961746411840106,
+    "centroid_train_acc": 0.9289823804386911,
+    "centroid_test_acc": 0.6453237410071943,
+    "final_train_acc": 0.9992958168524512,
+    "final_train_eer": 0.000719165767709457,
+    "final_train_f1": 0.9971269527742863,
+    "final_test_acc": 0.8007765830346476,
+    "final_test_f1": 0.6092404072043852,
+    "final_test_eer": 0.1935483870967742
+  },
+  {
+    "params": {
+      "hfreq": 100.0,
+      "lfreq": 7.0,
+      "notch_filter": [
+        50
+      ],
+      "tmax": 5.0,
+      "tmin": -2.0
+    },
+    "final_loss": 0.0015874636467597797,
+    "centroid_train_acc": 0.9645810859403092,
+    "centroid_test_acc": 0.741726618705036,
+    "final_train_acc": 0.9999550521395182,
+    "final_train_eer": 0.0,
+    "final_train_f1": 0.9996405463695183,
+    "final_test_acc": 0.7956989247311828,
+    "final_test_f1": 0.5959885386819483,
+    "final_test_eer": 0.20430107526881722
+  }
+]
