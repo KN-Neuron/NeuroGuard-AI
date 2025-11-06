@@ -1,14 +1,14 @@
-from eeg_lib.data_loader.EEGDataExtractor import EEGDataExtractor
-from eeg_lib.pipelines.conv_training import train_triplet_online
-from eeg_lib.pipelines.embedding_generation import extract_embeddings_online
-from eeg_lib.utills.random_seed import set_seed
-from eeg_lib.data.encode_features_labels import encode_features_and_labels
-from eeg_lib.models.conv import EEGEmbedder
+from ..data.data_loader.EEGDataExtractor import EEGDataExtractor
+from .conv_training import train_triplet_online
+from .embedding_generation import extract_embeddings_online
+from ..utills.random_seed import set_seed
+from ..data.encode_features_labels import encode_features_and_labels
+from ..models.conv import EEGEmbedder
 import torch
 from torch import nn
 import torch.optim as optim
-from eeg_lib.data.subject_based_split import split_by_user
-from eeg_lib.data.subject_based_split import create_online_dataloaders
+from ..data.subject_based_split import split_by_user
+from ..data.subject_based_split import create_online_dataloaders
 import json
 import os
 import numpy as np
@@ -27,7 +27,7 @@ def save_result_to_json(result, json_path="grid_search_results.json"):
         json.dump(data, f, indent=2)
 
 
-def grid_search(seed, emb_dims, lfreqs, hfreqs, notch_filters, tmins, tmaxs, n_epochs_list, margins, destination_file="grid_search_results.json'"):
+def grid_search(seed: int, emb_dims: list[int], lfreqs: list[float], hfreqs: list[float], notch_filters:list[float], tmins: list[float], tmaxs: list[float], n_epochs_list: list[int], margins: list[float], destination_file: str="grid_search_results.json'"):
     combinations = len(emb_dims)*len(lfreqs)*len(hfreqs)*len(notch_filters)*len(tmins)*len(tmaxs)*len(n_epochs_list)*len(margins)
     current_iteration = 0
     set_seed(seed)
