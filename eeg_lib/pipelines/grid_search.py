@@ -1,7 +1,7 @@
-from ..data.data_loader.EEGDataExtractor import EEGDataExtractor
+from ..data.EEGDataExtractor import EEGDataExtractor
 from .conv_training import train_triplet_online
 from .embedding_generation import extract_embeddings_online
-from ..utills.random_seed import set_seed
+from ..utils.random_seed import set_seed
 from ..data.encode_features_labels import encode_features_and_labels
 from ..models.conv import EEGEmbedder
 import torch

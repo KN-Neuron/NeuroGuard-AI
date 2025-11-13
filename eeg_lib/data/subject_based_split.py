@@ -1,4 +1,4 @@
-from triplet_dataset import TripletEEGDataset, HardTripletEEGDataset, SimpleEEGDataset
+from .triplet_dataset import TripletEEGDataset, HardTripletEEGDataset, SimpleEEGDataset
 import numpy as np
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
@@ -17,7 +17,7 @@ def split_by_user(X: torch.Tensor, y: torch.Tensor, labels: pd.Series, test_size
 
     return X[train_idx], y[train_idx], X[test_idx], y[test_idx], labels[train_idx], labels[test_idx]
 
-def create_dataloaders(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor, y_test: torch.Tensor, batch_size: int =32)->(torch.data.utils.DataLoader, torch.utils.data.DataLoader):
+def create_dataloaders(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor, y_test: torch.Tensor, batch_size: int =32)->(torch.utils.data.DataLoader, torch.utils.data.DataLoader):
     """
     Wraps datasets and returns DataLoader objects.
     """
@@ -29,7 +29,7 @@ def create_dataloaders(X_train: torch.Tensor, y_train: torch.Tensor, X_test: tor
 
     return train_loader, test_loader
 
-def create_online_dataloaders(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor, y_test: torch.Tensor, batch_size: int =32)->(torch.data.utils.DataLoader, torch.utils.data.DataLoader):
+def create_online_dataloaders(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor, y_test: torch.Tensor, batch_size: int =32)->(torch.utils.data.DataLoader, torch.utils.data.DataLoader):
     """
     Wraps datasets and returns DataLoader objects.
     """

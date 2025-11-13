@@ -2,13 +2,21 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from typing import Callable, Union
+from dataclasses import dataclass
+
+@dataclass
+class TrainingConfig:
+    batch_size: int = 32
+    margin: float = 0.5
+    epochs: int = 10
+    learning_rate: float = 0.001
 
 def train_triplet_epoch(model: nn.Module, dataloader:torch.utils.data.dataloader, loss_fn: Callable, optimizer: torch.optim, device: torch.device) -> float:
     model.train()
     total_loss = 0.0
 
     for batch in dataloader:
-        anchor, positive, negative = (x.to(device) for x in batch[:3])  # unpack first 3 items
+        anchor, positive, negative = (x.to(device) for x in batch[:3])
 
         emb_anchor = model(anchor)
         emb_positive = model(positive)

@@ -52,7 +52,9 @@ class HardTripletEEGDataset(Dataset):
         label_to_indices = {}
         for idx, label in enumerate(self.labels):
             label = label.item()
-            label_to_indices.setdefault(label, []).append(idx)
+            if label not in label_to_indices:
+                label_to_indices[label] = []
+            label_to_indices[label].append(idx)
         return label_to_indices
 
     def _compute_embeddings(self):
@@ -60,7 +62,7 @@ class HardTripletEEGDataset(Dataset):
         with torch.no_grad():
             embeddings = []
             for x in self.data:
-                x = x.unsqueeze(0).to(self.device)  # add batch dimension
+                x = x.unsqueeze(0).to(self.device)
                 embedding = self.model(x)
                 embeddings.append(embedding.cpu())
             return torch.stack(embeddings)

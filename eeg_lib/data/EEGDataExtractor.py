@@ -143,9 +143,7 @@ class EEGDataExtractor:
 
 
 if __name__ == "__main__":
-    from eeg_lib.commons.constant import DATASETS_FOLDER
-
-    DATA_DIR = f"{DATASETS_FOLDER}/Kolory/"
+    DATA_DIR = "data/Kolory/"
 
     extractor = EEGDataExtractor(data_dir=DATA_DIR)
     eeg_df, participants_info = extractor.extract_dataframe()
