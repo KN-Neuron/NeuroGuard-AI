@@ -2,6 +2,68 @@ import torch
 import torch.nn as nn
 
 class EmbeddingEEGNet(nn.Module):
+    """A PyTorch implementation of EEGNet for generating embeddings.
+
+    This model is a convolutional neural network designed for EEG signal
+    processing. It has been adapted from the original EEGNet architecture
+to
+    output a fixed-size embedding vector instead of class probabilities.
+
+    Parameters
+    ----------
+    channels : int, optional
+        Number of EEG channels, by default 4.
+    timesteps : int, optional
+        Number of time points in each EEG sample, by default 751.
+    cnn_temp_filt : int, optional
+        Number of filters in the initial temporal convolution, by default 8.
+    cnn_temp_size : int, optional
+        Kernel size of the initial temporal convolution, by default 64.
+    cnn_separable_size : int, optional
+        Kernel size of the separable convolution, by default 16. Also defines
+        the number of output filters for this layer.
+    depth : int, optional
+        Depth multiplier for the depthwise convolution, by default 2.
+    pool1s : int, optional
+        Downsampling factor for the first average pooling layer, by default 4.
+    pool2s : int, optional
+        Downsampling factor for the second average pooling layer, by default 8.
+    dropout1 : float, optional
+        Dropout rate after the first pooling layer, by default 0.5.
+    dropout2 : float, optional
+        Dropout rate after the second pooling layer, by default 0.5.
+    embedd_dim : int, optional
+        The dimensionality of the final output embedding vector, by default 32.
+
+    Attributes
+    ----------
+    cnnTemp : nn.Conv2d
+        Temporal convolutional layer.
+    batchNorm1 : nn.BatchNorm2d
+        Batch normalization after the temporal convolution.
+    cnnDepth : nn.Conv2d
+        Depthwise convolutional layer.
+    batchNorm2 : nn.BatchNorm2d
+        Batch normalization after the depthwise convolution.
+    avgPool1 : nn.AvgPool2d
+        First average pooling layer.
+    dropout1 : nn.Dropout
+        First dropout layer.
+    cnnSeparable : nn.Conv2d
+        Separable convolutional layer.
+    batchNorm3 : nn.BatchNorm2d
+        Batch normalization after the separable convolution.
+    avgPool2 : nn.AvgPool2d
+        Second average pooling layer.
+    dropout2 : nn.Dropout
+        Second dropout layer.
+    flatten : nn.Flatten
+        Flattens the tensor for the fully connected layer.
+    fc1 : nn.Linear
+        Fully connected layer that produces the final embedding.
+    elu : nn.ELU
+        ELU activation function.
+    """
     def __init__(self,
                  channels=4,
                  timesteps=751,
@@ -61,7 +123,20 @@ class EmbeddingEEGNet(nn.Module):
         self.elu = nn.ELU()
 
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Defines the forward pass of the EmbeddingEEGNet.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (N, 1, C, T), where N is the batch size,
+            C is the number of channels, and T is the number of timesteps.
+
+        Returns
+        -------
+        torch.Tensor
+            The output embedding tensor of shape (N, embedd_dim).
+        """
         x = self.cnnTemp(x)
         x = self.batchNorm1(x)
         x = self.cnnDepth(x)

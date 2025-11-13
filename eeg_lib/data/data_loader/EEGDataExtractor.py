@@ -1,6 +1,6 @@
 import os
 from typing import Optional, Tuple, List, Dict, Any
-
+import numpy as np
 
 import mne
 import pandas as pd
@@ -56,20 +56,60 @@ class EEGDataExtractor:
             eeg.apply_function(lambda x: x * 10**-6)
             eeg.filter(l_freq=self.lfreq, h_freq=self.hfreq)
             eeg.notch_filter(self.notch_filter)
+            if getattr(eeg, 'annotations', None) is not None:
+                print("Annotations summary:", eeg.annotations.description[:10])
             events, event_id = mne.events_from_annotations(eeg)
             if not event_id:
                 print(f"No events found in file {file}")
                 continue
-            # reverse mapping: integer code -> label name (e.g., 1 -> 'red')
+
             id_to_label = {v: k for k, v in event_id.items()}
+
+            samples = events[:, 0]
+            unique_vals, counts = np.unique(samples, return_counts=True)
+            dup_samples = unique_vals[counts > 1]
+
+            if dup_samples.size > 0:
+                print(f"Found {dup_samples.size} duplicated event sample indices in {file}.")
+                priority = ['RELAX_START', 'SENTENCE_START', 'RELAX_END', 'SENTENCE_END']
+                kept_events = []
+                seen_samples = set()
+                for s in np.unique(samples):
+                    rows = np.where(samples == s)[0]
+                    if len(rows) == 1:
+                        kept_events.append(events[rows[0]])
+                        continue
+                    codes = events[rows, 2].tolist()
+                    labels = [id_to_label.get(c, str(c)) for c in codes]
+                    chosen_idx = None
+                    for p in priority:
+                        if p in labels:
+                            chosen_idx = rows[labels.index(p)]
+                            break
+                    if chosen_idx is None:
+                        chosen_idx = rows[0]
+                    present = list(zip(rows.tolist(), labels))
+                    print(
+                        f" sample {s} -> choices {present} -> keeping row {chosen_idx} (label {id_to_label[events[chosen_idx, 2]]})")
+                    kept_events.append(events[chosen_idx])
+                events = np.asarray(sorted(kept_events, key=lambda e: e[0]), dtype=int)
+                print(f" Reduced events to {len(events)} after resolving duplicates for file {file}.")
+
+            present_codes = set(events[:, 2].tolist())
+            filtered_event_id = {label: code for label, code in event_id.items() if code in present_codes}
+            if len(filtered_event_id) != len(event_id):
+                removed = set(event_id.keys()) - set(filtered_event_id.keys())
+                print(f"Removed from event_id (no events present after cleaning): {removed}")
+
             epochs = mne.Epochs(
                 raw=eeg,
                 events=events,
-                event_id=event_id,
+                event_id=filtered_event_id,
                 tmin=self.tmin,
                 tmax=self.tmax,
                 baseline=self.baseline,
                 preload=True,
+                event_repeated='drop',
             )
             numeric_labels = epochs.events[:, -1]
             labels = [id_to_label.get(l, "unknown") for l in numeric_labels]
@@ -91,7 +131,6 @@ class EEGDataExtractor:
             participant_id = item["participant_id"]
             epochs = item["epochs"]
             labels = item["labels"]
-            # Retrieve all epochs as a 3D np array: (n_epochs, n_channels, n_times)
             epoch_data = epochs.get_data()
 
             for i, label in enumerate(labels):

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch import Tensor
 class ProxyNCALoss(nn.Module):
     """
     Proxy Neighborhood Component Analysis (ProxyNCA) loss.
@@ -17,22 +17,22 @@ class ProxyNCALoss(nn.Module):
             cosine similarities before the softmax. If None, a learnable
             scalar parameter is initialized to 1.0.
     """
-    def __init__(self, num_classes, embedding_dim, scale=None):
+    def __init__(
+        self,
+        num_classes: int,
+        embedding_dim: int,
+        scale: float | nn.Parameter | None = None
+    ) -> None:
         super(ProxyNCALoss, self).__init__()
-        # Create a learnable embedding table of shape (num_classes, embedding_dim)
         self.proxies = nn.Embedding(num_classes, embedding_dim)
-        # Initialize proxy weights with Kaiming normal (fan-out)
         nn.init.kaiming_normal_(self.proxies.weight, mode='fan_out')
 
-        # Set or create the scaling factor for similarities
         if scale is not None:
-            # If user provided a fixed scale (float), use it directly
             self.scale = scale
         else:
-            # Otherwise, make it a learnable parameter initialized to 1.0
             self.scale = nn.Parameter(torch.tensor([1.0], dtype=torch.float32))
 
-    def forward(self, embeddings, labels):
+    def forward(self, embeddings: Tensor, labels: torch.LongTensor) -> Tensor:
         """
         Compute the ProxyNCA loss.
 
@@ -47,20 +47,14 @@ class ProxyNCALoss(nn.Module):
         Returns:
             loss (Tensor): Scalar loss value.
         """
-        # 1) Normalize each sample embedding to unit length
         embeddings = F.normalize(embeddings, p=2, dim=1)  # (B, D)
 
-        # 2) Normalize each proxy vector to unit length
         proxies = F.normalize(self.proxies.weight, p=2, dim=1)  # (C, D)
 
-        # 3) Compute cosine similarities between each embedding and each proxy
-        #    Resulting shape: (batch_size, num_classes)
         similarities = torch.matmul(embeddings, proxies.t())
 
-        # 4) Scale the similarities (to control the "softness" of the softmax)
         logits = self.scale * similarities
 
-        # 5) Compute standard cross-entropy loss over the scaled logits
         loss = nn.CrossEntropyLoss()(logits, labels)
 
         return loss

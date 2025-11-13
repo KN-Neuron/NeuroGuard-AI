@@ -337,7 +337,6 @@ def plot_threshold_metrics(
     """
     plt.figure(figsize=(12, 5))
 
-    # (a) FNR & FPR vs. Threshold
     ax1 = plt.subplot(1, 2, 1)
     ax1.plot(thresholds, fnr_list, label="False‐Reject Rate (FNR)", color="tab:blue")
     ax1.plot(thresholds, fpr_list, label="False‐Accept Rate (FPR)", color="tab:orange")
@@ -351,7 +350,6 @@ def plot_threshold_metrics(
     ax1.legend(loc="upper right")
     ax1.grid(alpha=0.3)
 
-    # (b) Accuracy vs. Threshold
     ax2 = plt.subplot(1, 2, 2)
     ax2.plot(thresholds, acc_list, label="Overall Accuracy", color="tab:green")
     ax2.axvline(
@@ -407,6 +405,7 @@ def plot_f1_vs_threshold(
         color="white", linestyle="--", linewidth=1.2,
         label=f"best T = {best_threshold:.3f}\nmax F₁ = {best_f1:.3f}"
     )
+
     plt.title("F₁ Score vs. Distance Threshold")
     plt.xlabel("Distance Threshold")
     plt.ylabel("F₁ Score")

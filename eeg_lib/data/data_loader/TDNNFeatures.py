@@ -2,6 +2,7 @@ import numpy as np
 from scipy.fftpack import dct
 from scipy.signal import stft
 from scipy.signal import welch
+from typing import Dict, Tuple
 
 bands = {
     'delta': (0, 1),    # 0.5-4 Hz (bin 1: 0-5 Hz)
@@ -14,7 +15,7 @@ bands = {
 }
 
 
-def compute_band_energy(stft_magnitudes, bands):
+def compute_band_energy(stft_magnitudes: np.ndarray, bands: Dict[str, Tuple[int, int]]) -> np.ndarray:
     """
     Compute band-specific energy from STFT magnitudes.
 
@@ -26,24 +27,19 @@ def compute_band_energy(stft_magnitudes, bands):
     Returns
     energy : np.ndarray - Energy per channel, per frame, per band, shape (n_channels, n_frames, n_bands).
     """
-    # Initialize output array: (n_channels, n_frames, n_bands)
     n_channels, n_frames, _ = stft_magnitudes.shape
     n_bands = len(bands)
     energy = np.zeros((n_channels, n_frames, n_bands))
 
-    # Loop over channels, frames, and bands
-    for c in range(n_channels):  # For each EEG channel (e.g., 4)
-        for f_idx in range(n_frames):  # For each frame (e.g., 15)
-            for b_idx, (start, end) in enumerate(bands.values()):  # For each band (e.g., 5)
-                # Extract STFT magnitudes for this band
+    for c in range(n_channels):
+        for f_idx in range(n_frames):
+            for b_idx, (start, end) in enumerate(bands.values()):
                 band_magnitudes = stft_magnitudes[c, f_idx, start:end]
-                # Compute energy: sum of squared magnitudes
                 energy[c, f_idx, b_idx] = np.sum(band_magnitudes ** 2)
-
     return energy
 
 
-def apply_dct(log_energy, n_coeffs=7):
+def apply_dct(log_energy: np.ndarray, n_coeffs: int = 7) -> np.ndarray:
     """
     Apply Discrete Cosine Transform (DCT) to log-energy features.
 
@@ -61,8 +57,12 @@ def apply_dct(log_energy, n_coeffs=7):
     return coeffs
 
 
-# Full pipeline
-def extract_features(eeg_sample, frame_length=50, trunc=750, fs=250):
+def extract_features(
+    eeg_sample: np.ndarray,
+    frame_length: int = 50,
+    trunc: int = 750,
+    fs: int = 250
+) -> np.ndarray:
     """
     Extract TDNN-style features from a multichannel EEG sample.
 
@@ -83,26 +83,29 @@ def extract_features(eeg_sample, frame_length=50, trunc=750, fs=250):
     Returns
     tdnn_input : np.ndarray - Feature array of shape (n_frames, n_channels * n_dct_coeffs).
     """
-    # Truncate to 750 timesteps
     eeg_trunc = eeg_sample[:, :trunc]
     n_channels, n_timesteps = eeg_trunc.shape
     n_frames = n_timesteps // frame_length
 
-    # Reshape into frames
     frames = eeg_trunc.reshape(n_channels, n_frames, frame_length)
 
-    # STFT
     stft_magnitudes = np.zeros((n_channels, n_frames, frame_length // 2 + 1))
-    for c in range(n_channels):
-        for f_idx in range(n_frames):
-            _, _, Zxx = stft(frames[c, f_idx], fs=fs, nperseg=frame_length)
 
-            stft_magnitudes[c, f_idx] = np.mean(np.abs(Zxx), axis=1)
+    for channel_idx in range(n_channels):
+        for frame_idx in range(n_frames):
+            _, _, stft_result = stft(
+                frames[channel_idx, frame_idx],
+                fs=fs,
+                nperseg=frame_length
+            )
 
-    # Filter bank energy
+            stft_magnitudes[channel_idx, frame_idx] = np.mean(
+                np.abs(stft_result),
+                axis=1
+            )
+
     filter_energy = compute_band_energy(stft_magnitudes, bands)
 
-    # Log + DCT
     log_energy = np.log(filter_energy + 1e-6)
     dct_coeffs = apply_dct(log_energy, n_coeffs=7)
 
@@ -112,11 +115,13 @@ def extract_features(eeg_sample, frame_length=50, trunc=750, fs=250):
 
 
 
-def extract_psd_features(eeg_sample,
-                         fs=250,
-                         frame_length_s=1.0,
-                         hop_length_s=0.5,
-                         bands=bands):
+def extract_psd_features(
+    eeg_sample: np.ndarray,
+    fs: int = 250,
+    frame_length_s: float = 1.0,
+    hop_length_s: float = 0.5,
+    bands: Dict[str, Tuple[float, float]] = bands
+) -> np.ndarray:
     """
     Compute PSD-based band-power features in sliding windows.
 
@@ -134,26 +139,22 @@ def extract_psd_features(eeg_sample,
     nperseg = int(frame_length_s * fs)
     hop = int(hop_length_s * fs)
 
-    # how many windows?
     n_frames = 1 + (n_times - nperseg) // hop
     n_bands = len(bands)
     out = np.zeros((n_frames, n_channels * n_bands), dtype=np.float32)
 
-    # precompute fenband masks per channel (same for all channels)
     freqs, _ = welch(eeg_sample[0], fs=fs, nperseg=nperseg)
     band_masks = [(freqs >= lo) & (freqs < hi) for lo, hi in bands.values()]
 
     for f in range(n_frames):
         start = f * hop
         stop  = start + nperseg
-        # for each channel, compute PSD and then band‑power
         frame_bp = []
         for ch in range(n_channels):
             _, psd = welch(eeg_sample[ch, start:stop],
                            fs=fs, nperseg=nperseg)
-            # average each band
             for mask in band_masks:
                 frame_bp.append(psd[mask].mean())
         out[f] = frame_bp
 
-    return out  # shape (n_frames, n_channels * n_bands)
+    return out

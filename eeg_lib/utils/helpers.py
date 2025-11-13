@@ -1,9 +1,11 @@
+from numpy import ndarray
+from pandas.core.arrays import ExtensionArray
 from sklearn.model_selection import train_test_split
 from eeg_lib.commons.constant import RESULTS_FOLDER
 
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
-from typing import Optional
+from typing import Optional, Tuple, Any
 from datetime import datetime
 import os
 import numpy as np
@@ -111,8 +113,9 @@ def create_writer(
 def split_train_test(
     eeg_df: pd.DataFrame,
     test_size: float = 0.2,
-    random_state: int = 0
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    random_state: int = 0,
+    ret_colors: bool = False
+) -> tuple[Any, Any, Any, Any, Any, Any] | tuple[Any, Any, Any, Any]:
     """
     Splits an EEG DataFrame into training and testing sets based on unique participant IDs.
 
@@ -157,11 +160,19 @@ def split_train_test(
     y_test = test_df["participant_id"].values
     X_train = train_df["epoch"].values
     X_test = test_df["epoch"].values
+    colors_train = None
+    colors_test = None
+    if ret_colors:
+        colors_train = train_df["label"].values
+        colors_test = test_df["label"].values
 
     print("Training set participants:", train_participants)
     print("Test set participants:", test_participants)
     print("Training labels:", np.unique(y_train))
     print("Test labels:", np.unique(y_test))
+
+    if ret_colors:
+        return X_train, X_test, y_train, y_test, colors_train, colors_test
 
     return X_train, X_test, y_train, y_test
 
@@ -195,16 +206,13 @@ def compute_genuine_imposter_distances(
     profile_matrix = np.vstack([user_profiles[pid] for pid in unique_pids])
     pid_to_index = { pid: idx for idx, pid in enumerate(unique_pids) }
 
-    # Compute pairwise distance matrix from each embedding to every user_profile:
     all_dist_to_profiles = cdist(embeddings, profile_matrix, metric=distance_metric)
 
     for i in range(N):
         pid_i = ids[i]
         idx_i = pid_to_index[pid_i]
-        # genuine distance = distance to the profile of the correct subject
         genuine_dists[i] = all_dist_to_profiles[i, idx_i]
 
-        # imposter distances = distances to all other profiles
         for j in range(len(unique_pids)):
             if j == idx_i:
                 continue
@@ -215,7 +223,8 @@ def compute_genuine_imposter_distances(
 def compute_threshold_metrics(
     genuine_dists: np.ndarray,
     imposter_dists: np.ndarray,
-    num_thresholds: int = 200
+    num_thresholds: int = 200,
+    eps: float = 0.0001
 ) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, float, float, float):
     """
     Given arrays of genuine/imposter distances, sweep a range of thresholds
@@ -243,7 +252,6 @@ def compute_threshold_metrics(
     num_imposter = float(len(imposter_dists))
     total_pairs = num_genuine + num_imposter
 
-    # Build grid of thresholds from min to max observed distance
     all_distances = np.concatenate([genuine_dists, imposter_dists])
     t_min = np.min(all_distances)
     t_max = np.max(all_distances)
@@ -254,13 +262,11 @@ def compute_threshold_metrics(
     acc_list = np.zeros(num_thresholds, dtype=float)
 
     for idx, T in enumerate(thresholds):
-        # false rejects = genuine distances > T
         false_rejects = np.sum(genuine_dists > T)
-        fnr = false_rejects / num_genuine
+        fnr = false_rejects / (num_genuine + eps)
 
-        # false accepts = imposter distances <= T
         false_accepts = np.sum(imposter_dists <= T)
-        fpr = false_accepts / num_imposter
+        fpr = false_accepts / (num_imposter + eps)
 
         true_accepts = num_genuine - false_rejects
         true_rejects = num_imposter - false_accepts
@@ -270,7 +276,6 @@ def compute_threshold_metrics(
         fpr_list[idx] = fpr
         acc_list[idx] = accuracy
 
-    # Find EER point
     eer_diff = np.abs(fnr_list - fpr_list)
     eer_idx = np.argmin(eer_diff)
     
@@ -312,15 +317,12 @@ def compute_f1_vs_threshold(
     f1_list = np.zeros(num_thresholds, dtype=float)
 
     for idx, T in enumerate(thresholds):
-        # Predictions for genuine: positive if d ≤ T
         TP = np.sum(genuine_dists <= T)
         FN = np.sum(genuine_dists > T)
 
-        # Predictions for imposter: positive if d ≤ T (false accepts)
         FP = np.sum(imposter_dists <= T)
         TN = np.sum(imposter_dists > T)
 
-        # Precision = TP / (TP + FP); Recall = TP / (TP + FN)
         if (TP + FP) > 0:
             precision = TP / float(TP + FP)
         else:
@@ -343,21 +345,38 @@ def compute_f1_vs_threshold(
 
     return thresholds, f1_list, best_threshold, best_f1
 
-def split_test_data_for_verification(test_embeddings, test_ids, profile_ratio=0.6):
+def split_test_data_for_verification(
+    test_embeddings: np.ndarray,
+    test_ids: np.ndarray,
+    profile_ratio: float = 0.6
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Split test data into profile creation and verification portions.
     
-    Args:
-        test_embeddings: Test embeddings array
-        test_ids: Test subject IDs
-        profile_ratio: Ratio of test data to use for creating profiles
-        
-    Returns:
-        profile_embeddings, profile_ids, verify_embeddings, verify_ids
+    Parameters
+    ----------
+    test_embeddings : np.ndarray
+        An array of embedding vectors for the test set, with a shape of
+        (n_samples, embedding_dim).
+    test_ids : np.ndarray
+        An array of corresponding subject IDs for each embedding in
+        `test_embeddings`, with a shape of (n_samples,).
+    profile_ratio : float, optional
+        The proportion of each subject's samples to be allocated to the
+        profile set. The rest will be used for verification. Must be between
+        0 and 1. Defaults to 0.6.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        A tuple containing four NumPy arrays:
+        - profile_embeddings: Embeddings designated for creating user profiles.
+        - profile_ids: Corresponding subject IDs for the profile embeddings.
+        - verify_embeddings: Embeddings designated for verification attempts.
+        - verify_ids: Corresponding subject IDs for the verification embeddings.
     """
     unique_subjects = np.unique(test_ids)
     
-    # For each subject, split their samples
     profile_embeddings_list = []
     profile_ids_list = []
     verify_embeddings_list = []
@@ -368,13 +387,11 @@ def split_test_data_for_verification(test_embeddings, test_ids, profile_ratio=0.
         subject_embeddings = test_embeddings[subject_mask]
         subject_samples = len(subject_embeddings)
         
-        # Need at least 2 samples per subject
         if subject_samples < 2:
             continue
             
         profile_samples = max(1, int(subject_samples * profile_ratio))
         
-        # Split subject's data
         profile_embeddings_list.extend(subject_embeddings[:profile_samples])
         profile_ids_list.extend([subject_id] * profile_samples)
         
