@@ -2,22 +2,20 @@ import os
 from typing import Optional, Tuple, List, Dict, Any
 import numpy as np
 
-
 import mne
 import pandas as pd
-from eeg_lib.datastructures import EEGEpochs, EEGParticipant
 
 
-class EEGDataExtractor:
+class EEGDataExtractorV2:
     def __init__(
-        self,
-        data_dir: str,
-        lfreq: float = 1.0,
-        hfreq: float = 100.0,
-        notch_filter: Optional[List[int]] = None,
-        baseline: Optional[Tuple[Optional[float], Optional[float]]] = None,
-        tmin: float = 0.0,
-        tmax: float = 3.0,
+            self,
+            data_dir: str,
+            lfreq: float = 1,
+            hfreq: float = 100,
+            notch_filter: list = [50],
+            baseline: Optional[Tuple] = None,
+            tmin: float = 0,
+            tmax: float = 3,
     ):
         """
         Parameters:
@@ -32,38 +30,48 @@ class EEGDataExtractor:
         self.data_dir = data_dir
         self.lfreq = lfreq
         self.hfreq = hfreq
-        self.notch_filter = notch_filter if notch_filter is not None else [50]
+        self.notch_filter = notch_filter
         self.baseline = baseline
         self.tmin = tmin
         self.tmax = tmax
 
-    def _read_from_dir(self) -> List[str]:
+    def _read_from_dir(self):
         """Returns a list of .fif files in the data directory."""
         return [f for f in os.listdir(self.data_dir) if f.endswith(".fif")]
 
-    def _load_eeg(self) -> Tuple[List[EEGEpochs], List[EEGParticipant]]:
+    def _load_eeg(self):
         """
-        Loads each .fif file, applies filtering, converts units,
-        extracts events and epochs, and maps event codes to labels.
+        Loads each .fif file, applies filtering and amplitude-based artifact rejection,
+        converts units, extracts events and epochs, and maps event codes to labels.
         """
         files = self._read_from_dir()
         eeg_and_events = []
         participants = []
+
         for file in files:
             participant_id = os.path.splitext(file)[0]
             file_path = os.path.join(self.data_dir, file)
             eeg = mne.io.read_raw_fif(file_path, preload=True)
             eeg.pick_types(eeg=True, stim=False, eog=False, exclude="bads")
-            # Convert units (from µV to V if needed)
-            eeg.apply_function(lambda x: x * 10**-6)
+
+            # Convert units (if needed)
+            eeg.apply_function(lambda x: x * 10 ** -6)
+
+            # Filtering
             eeg.filter(l_freq=self.lfreq, h_freq=self.hfreq)
             eeg.notch_filter(self.notch_filter)
+
+            # Event extraction
             events, event_id = mne.events_from_annotations(eeg)
             if not event_id:
                 print(f"No events found in file {file}")
                 continue
-            # reverse mapping: integer code -> label name (e.g., 1 -> 'red')
+
             id_to_label = {v: k for k, v in event_id.items()}
+
+            # Amplitude-based rejection criteria (150 µV)
+            reject_criteria = dict(eeg=150e-6)  # Adjust as needed
+
             epochs = mne.Epochs(
                 raw=eeg,
                 events=events,
@@ -71,21 +79,23 @@ class EEGDataExtractor:
                 tmin=self.tmin,
                 tmax=self.tmax,
                 baseline=self.baseline,
+                reject=reject_criteria,
                 preload=True,
             )
+
             numeric_labels = epochs.events[:, -1]
             labels = [id_to_label.get(l, "unknown") for l in numeric_labels]
 
-            eeg_and_events.append(EEGEpochs(
-                epochs=epochs.get_data(),
-                participant_id=participant_id,
-                labels=labels,
-                event_ids=event_id
-            ))
-            participants.append(EEGParticipant(
-                participant_id=participant_id,
-                file=file
-            ))
+            eeg_and_events.append({
+                "participant_id": participant_id,
+                "epochs": epochs,
+                "labels": labels
+            })
+            participants.append({
+                "participant_id": participant_id,
+                "file": file
+            })
+
         return eeg_and_events, participants
 
     def extract_dataframe(self) -> Tuple[pd.DataFrame, List[Dict[str, Any]]]:
@@ -104,7 +114,7 @@ class EEGDataExtractor:
             epoch_data = epochs.get_data()
 
             for i, label in enumerate(labels):
-                single_epoch_data = epoch_data[i]  
+                single_epoch_data = epoch_data[i]
                 data.append(
                     {
                         "participant_id": participant_id,
@@ -139,7 +149,7 @@ class EEGDataExtractor:
 
             for label, epoch_list in label_to_epochs.items():
                 erp = np.mean(epoch_list, axis=0)  # shape: (n_channels, n_times)
-                erp = np.mean(erp, axis =0)
+                erp = np.mean(erp, axis=0)
                 data.append({
                     "participant_id": participant_id,
                     "label": label,
@@ -148,7 +158,6 @@ class EEGDataExtractor:
 
         df = pd.DataFrame(data)
         return df, participants
-
 
 if __name__ == "__main__":
     from eeg_lib.commons.constant import DATASETS_FOLDER
