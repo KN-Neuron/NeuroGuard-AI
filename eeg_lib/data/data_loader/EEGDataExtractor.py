@@ -54,11 +54,11 @@ class EEGDataExtractor:
             file_path = os.path.join(self.data_dir, file)
             eeg = mne.io.read_raw_fif(file_path, preload=True)
             eeg.pick_types(eeg=True, stim=False, eog=False, exclude="bads")
-            
+
             eeg.apply_function(lambda x: x * 10**-6)
             eeg.filter(l_freq=self.lfreq, h_freq=self.hfreq)
             eeg.notch_filter(self.notch_filter)
-            if getattr(eeg, 'annotations', None) is not None:
+            if getattr(eeg, "annotations", None) is not None:
                 print("Annotations summary:", eeg.annotations.description[:10])
             events, event_id = mne.events_from_annotations(eeg)
             if not event_id:
@@ -72,10 +72,16 @@ class EEGDataExtractor:
             dup_samples = unique_vals[counts > 1]
 
             if dup_samples.size > 0:
-                print(f"Found {dup_samples.size} duplicated event sample indices in {file}.")
-                priority = ['RELAX_START', 'SENTENCE_START', 'RELAX_END', 'SENTENCE_END']
+                print(
+                    f"Found {dup_samples.size} duplicated event sample indices in {file}."
+                )
+                priority = [
+                    "RELAX_START",
+                    "SENTENCE_START",
+                    "RELAX_END",
+                    "SENTENCE_END",
+                ]
                 kept_events = []
-                seen_samples = set()
                 for s in np.unique(samples):
                     rows = np.where(samples == s)[0]
                     if len(rows) == 1:
@@ -92,16 +98,23 @@ class EEGDataExtractor:
                         chosen_idx = rows[0]
                     present = list(zip(rows.tolist(), labels))
                     print(
-                        f" sample {s} -> choices {present} -> keeping row {chosen_idx} (label {id_to_label[events[chosen_idx, 2]]})")
+                        f" sample {s} -> choices {present} -> keeping row {chosen_idx} (label {id_to_label[events[chosen_idx, 2]]})"
+                    )
                     kept_events.append(events[chosen_idx])
                 events = np.asarray(sorted(kept_events, key=lambda e: e[0]), dtype=int)
-                print(f" Reduced events to {len(events)} after resolving duplicates for file {file}.")
+                print(
+                    f" Reduced events to {len(events)} after resolving duplicates for file {file}."
+                )
 
             present_codes = set(events[:, 2].tolist())
-            filtered_event_id = {label: code for label, code in event_id.items() if code in present_codes}
+            filtered_event_id = {
+                label: code for label, code in event_id.items() if code in present_codes
+            }
             if len(filtered_event_id) != len(event_id):
                 removed = set(event_id.keys()) - set(filtered_event_id.keys())
-                print(f"Removed from event_id (no events present after cleaning): {removed}")
+                print(
+                    f"Removed from event_id (no events present after cleaning): {removed}"
+                )
 
             epochs = mne.Epochs(
                 raw=eeg,
@@ -111,21 +124,22 @@ class EEGDataExtractor:
                 tmax=self.tmax,
                 baseline=self.baseline,
                 preload=True,
-                event_repeated='drop',
+                event_repeated="drop",
             )
             numeric_labels = epochs.events[:, -1]
             labels = [id_to_label.get(l, "unknown") for l in numeric_labels]
 
-            eeg_and_events.append(EEGEpochs(
-                epochs=epochs.get_data(),
-                participant_id=participant_id,
-                labels=labels,
-                event_ids=event_id
-            ))
-            participants.append(EEGParticipant(
-                participant_id=participant_id,
-                file=file
-            ))
+            eeg_and_events.append(
+                EEGEpochs(
+                    epochs=epochs.get_data(),
+                    participant_id=participant_id,
+                    labels=labels,
+                    event_ids=event_id,
+                )
+            )
+            participants.append(
+                EEGParticipant(participant_id=participant_id, file=file)
+            )
         return eeg_and_events, participants
 
     def extract_dataframe(self) -> Tuple[pd.DataFrame, List[EEGParticipant]]:
@@ -137,13 +151,13 @@ class EEGDataExtractor:
         eeg_and_events, participants = self._load_eeg()
         data = []
         for item in eeg_and_events:
-            participant_id = item["participant_id"]
-            epochs = item["epochs"]
-            labels = item["labels"]
-            epoch_data = epochs.get_data()
+            participant_id = item.participant_id
+            epochs = item.epochs
+            labels = item.labels
+            epoch_data = epochs
 
             for i, label in enumerate(labels):
-                single_epoch_data = epoch_data[i]  
+                single_epoch_data = epoch_data[i]
                 data.append(
                     {
                         "participant_id": participant_id,
@@ -167,9 +181,8 @@ class EEGDataExtractor:
             participant_id = item.participant_id
             epochs = item.epochs
             labels = item.labels
-            epoch_data = epochs  
+            epoch_data = epochs
 
-            
             label_to_epochs: Dict[str, List[Any]] = {}
             for i, label in enumerate(labels):
                 if label not in label_to_epochs:
@@ -177,13 +190,11 @@ class EEGDataExtractor:
                 label_to_epochs[label].append(epoch_data[i])
 
             for label, epoch_list in label_to_epochs.items():
-                erp = np.mean(epoch_list, axis=0)  
-                erp = np.mean(erp, axis =0)
-                data.append({
-                    "participant_id": participant_id,
-                    "label": label,
-                    "erp": erp
-                })
+                erp = np.mean(epoch_list, axis=0)
+                erp = np.mean(erp, axis=0)
+                data.append(
+                    {"participant_id": participant_id, "label": label, "erp": erp}
+                )
 
         df = pd.DataFrame(data)
         return df, participants
