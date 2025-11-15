@@ -1,4 +1,5 @@
 """Training and evaluation engine for EEG models."""
+
 from sklearn.manifold import TSNE
 from sklearn.metrics import roc_curve
 from eeg_lib.utils.helpers import get_device
@@ -23,7 +24,7 @@ def verify_test_sample(
     model: EEGNetEmbeddingModel,
     user_profiles: Dict[str, npt.NDArray[Any]],
     sample_index: int = 0,
-    threshold: float = 0.5
+    threshold: float = 0.5,
 ) -> Tuple[bool, float]:
     """
     Verifies a sample from the test dataframe against the user profiles.
@@ -57,9 +58,7 @@ def verify_test_sample(
 
 
 def verify_sample(
-    new_embedding: npt.NDArray[Any],
-    user_profile: npt.NDArray[Any],
-    threshold: float
+    new_embedding: npt.NDArray[Any], user_profile: npt.NDArray[Any], threshold: float
 ) -> Tuple[bool, float]:
     """
     Verifies a new embedding against a user profile.
@@ -77,8 +76,7 @@ def verify_sample(
 
 
 def create_user_profiles(
-    embeddings_array: npt.NDArray[Any],
-    participant_ids_array: npt.NDArray[Any]
+    embeddings_array: npt.NDArray[Any], participant_ids_array: npt.NDArray[Any]
 ) -> Dict[str, npt.NDArray[Any]]:
     """
     Create user profiles by averaging embeddings for each participant.
@@ -179,8 +177,7 @@ def train_triplet_model(
 
 
 def extract_embeddings(
-    model: EEGNetEmbeddingModel,
-    test_df: pd.DataFrame
+    model: EEGNetEmbeddingModel, test_df: pd.DataFrame
 ) -> Tuple[npt.NDArray[Any], npt.NDArray[Any]]:
     """
     Extract embeddings and participant IDs from the test dataset using the given model.
@@ -220,8 +217,7 @@ def extract_embeddings(
 
 
 def compute_pairwise_distances(
-    embeddings_array: npt.NDArray[Any],
-    participant_ids_array: npt.NDArray[Any]
+    embeddings_array: npt.NDArray[Any], participant_ids_array: npt.NDArray[Any]
 ) -> Tuple[List[float], List[float]]:
     """
     Compute pairwise distances for genuine and imposter pairs.
@@ -251,8 +247,7 @@ def compute_pairwise_distances(
 
 
 def find_eer_threshold(
-    genuine_distances: List[float],
-    imposter_distances: List[float]
+    genuine_distances: List[float], imposter_distances: List[float]
 ) -> float:
     """
     Find the Equal Error Rate (EER) threshold.
@@ -286,7 +281,7 @@ def find_eer_threshold(
 def plot_2d_embeddings(
     embeddings_2d: npt.NDArray[Any],
     participant_ids: npt.NDArray[Any],
-    method_name: str = "t-SNE"
+    method_name: str = "t-SNE",
 ) -> None:
     """
     Plots 2D embeddings colored by participant/user ID.
@@ -312,8 +307,7 @@ def plot_2d_embeddings(
 
 
 def run_threshold_and_visualization(
-    model: EEGNetEmbeddingModel,
-    test_df: pd.DataFrame
+    model: EEGNetEmbeddingModel, test_df: pd.DataFrame
 ) -> Tuple[float, float, float, float, npt.NDArray[Any]]:
     """
     Extracts embeddings for all test samples, performs threshold selection by computing the
@@ -338,9 +332,7 @@ def run_threshold_and_visualization(
         embeddings_array, participant_ids_array
     )
 
-    best_threshold = find_eer_threshold(
-        genuine_distances, imposter_distances
-    )
+    best_threshold = find_eer_threshold(genuine_distances, imposter_distances)
     print(f"Selected threshold = {best_threshold:.4f}")
 
     # Compute approximate EER, FRR, and FAR at the threshold
@@ -348,18 +340,21 @@ def run_threshold_and_visualization(
     thresholded_genuine = [d for d in genuine_distances if d <= best_threshold]
     thresholded_imposter = [d for d in imposter_distances if d <= best_threshold]
 
-    far = len(thresholded_imposter) / len(imposter_distances) if len(imposter_distances) > 0 else 0.0
-    frr = len([d for d in genuine_distances if d > best_threshold]) / len(genuine_distances) if len(genuine_distances) > 0 else 0.0
+    far = (
+        len(thresholded_imposter) / len(imposter_distances)
+        if len(imposter_distances) > 0
+        else 0.0
+    )
+    frr = (
+        len([d for d in genuine_distances if d > best_threshold])
+        / len(genuine_distances)
+        if len(genuine_distances) > 0
+        else 0.0
+    )
     approximate_eer = (far + frr) / 2.0
 
     tsne = TSNE(n_components=2, random_state=42, perplexity=30)
     tsne_coords = tsne.fit_transform(embeddings_array)
     plot_2d_embeddings(tsne_coords, participant_ids_array, method_name="t-SNE")
-
-    # Note: UMAP implementation is commented out in the original code
-    # To use it, uncomment and install umap-learn: pip install umap-learn
-    # reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, random_state=42)
-    # umap_coords = reducer.fit_transform(embeddings_array)
-    # plot_2d_embeddings(umap_coords, participant_ids_array, method_name="UMAP")
 
     return best_threshold, approximate_eer, frr, far, tsne_coords

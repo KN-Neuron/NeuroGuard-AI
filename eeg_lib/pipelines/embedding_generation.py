@@ -2,10 +2,9 @@ import torch
 from torch.utils.data import DataLoader
 from typing import Any, List, Tuple
 
+
 def extract_embeddings(
-    model: torch.nn.Module,
-    dataloader: DataLoader[Any],
-    device: torch.device
+    model: torch.nn.Module, dataloader: DataLoader[Any], device: torch.device
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     model.eval()
     embeddings_list: List[torch.Tensor] = []
@@ -21,13 +20,12 @@ def extract_embeddings(
             labels_list.append(torch.tensor(labels))  # convert list to tensor if needed
 
     all_embeddings = torch.cat(embeddings_list, dim=0)  # shape: (N, D)
-    all_labels = torch.cat(labels_list, dim=0)          # shape: (N,)
+    all_labels = torch.cat(labels_list, dim=0)  # shape: (N,)
     return all_embeddings, all_labels
 
+
 def extract_embeddings_online(
-    model: torch.nn.Module,
-    dataloader: DataLoader[Any],
-    device: torch.device
+    model: torch.nn.Module, dataloader: DataLoader[Any], device: torch.device
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     model.eval()
     embeddings_list: List[torch.Tensor] = []
@@ -43,6 +41,5 @@ def extract_embeddings_online(
             labels_list.append(labels.cpu())
 
     all_embeddings = torch.cat(embeddings_list, dim=0)  # shape: (N, embedding_dim)
-    all_labels = torch.cat(labels_list, dim=0)          # shape: (N,)
+    all_labels = torch.cat(labels_list, dim=0)  # shape: (N,)
     return all_embeddings, all_labels
-

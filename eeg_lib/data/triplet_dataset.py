@@ -6,7 +6,9 @@ from ..types import EEGDataTensor, ModelOutputTensor
 from ..models.similarity.conv import EEGEmbedder
 
 
-class TripletEEGDataset(Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataTensor, int]]):
+class TripletEEGDataset(
+    Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataTensor, int]]
+):
     def __init__(self, data: EEGDataTensor, labels: torch.Tensor):
         """
         Initialize the TripletEEGDataset.
@@ -31,7 +33,9 @@ class TripletEEGDataset(Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataTenso
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, index: int) -> Tuple[EEGDataTensor, EEGDataTensor, EEGDataTensor, int]:
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[EEGDataTensor, EEGDataTensor, EEGDataTensor, int]:
         """
         Returns a triplet: (anchor, positive, negative, anchor_label)
         """
@@ -45,15 +49,25 @@ class TripletEEGDataset(Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataTenso
         positive = self.data[positive_idx]
 
         # Negative (sample from different class)
-        negative_label = random.choice([l for l in self.label_to_indices if l != anchor_label])
+        negative_label = random.choice(
+            [l for l in self.label_to_indices if l != anchor_label]
+        )
         negative_idx = random.choice(self.label_to_indices[negative_label])
         negative = self.data[negative_idx]
 
         return anchor, positive, negative, anchor_label
 
 
-class HardTripletEEGDataset(Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataTensor, int]]):
-    def __init__(self, data: EEGDataTensor, labels: torch.Tensor, model: EEGEmbedder, device: str = 'cpu'):
+class HardTripletEEGDataset(
+    Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataTensor, int]]
+):
+    def __init__(
+        self,
+        data: EEGDataTensor,
+        labels: torch.Tensor,
+        model: EEGEmbedder,
+        device: str = "cpu",
+    ):
         """
         Initialize the HardTripletEEGDataset with precomputed embeddings.
 
@@ -70,7 +84,9 @@ class HardTripletEEGDataset(Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataT
         self.device = device
 
         if len(self.label_to_indices) < 2:
-            raise ValueError("Dataset must contain at least 2 classes for triplet sampling")
+            raise ValueError(
+                "Dataset must contain at least 2 classes for triplet sampling"
+            )
         # Precompute embeddings for all data
         self.embeddings = self._compute_embeddings()
 
@@ -94,7 +110,9 @@ class HardTripletEEGDataset(Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataT
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, index: int) -> Tuple[EEGDataTensor, EEGDataTensor, EEGDataTensor, int]:
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[EEGDataTensor, EEGDataTensor, EEGDataTensor, int]:
         """
         Returns a hard triplet: (anchor, positive, negative, anchor_label)
         """
@@ -103,7 +121,9 @@ class HardTripletEEGDataset(Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataT
         anchor_embedding = self.embeddings[index]
 
         # Hard Positive
-        positive_indices = [i for i in self.label_to_indices[anchor_label] if i != index]
+        positive_indices = [
+            i for i in self.label_to_indices[anchor_label] if i != index
+        ]
 
         if not positive_indices:
             # No other positive samples, fallback to anchor itself or handle differently
@@ -123,7 +143,9 @@ class HardTripletEEGDataset(Dataset[Tuple[EEGDataTensor, EEGDataTensor, EEGDataT
 
         if not negative_indices:
             # Sample from different class if possible
-            available_labels = [lbl for lbl in self.label_to_indices if lbl != anchor_label]
+            available_labels = [
+                lbl for lbl in self.label_to_indices if lbl != anchor_label
+            ]
             if not available_labels:
                 raise RuntimeError("No negative samples available for triplet loss")
             chosen_label = random.choice(available_labels)
@@ -158,5 +180,3 @@ class SimpleEEGDataset(Dataset[Tuple[EEGDataTensor, torch.Tensor]]):
         Returns: (data, label)
         """
         return self.data[index], self.labels[index]
-
-

@@ -12,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 import numpy as np
 
+
 class StatisticsPooling(nn.Module):
     """Computes mean and standard deviation across the temporal dimension.
 
@@ -30,6 +31,7 @@ class StatisticsPooling(nn.Module):
     eps : float
         The epsilon value for numerical stability.
     """
+
     def __init__(self, eps: float = 1e-6) -> None:
         super(StatisticsPooling, self).__init__()
         self.eps: float = eps
@@ -56,7 +58,7 @@ class StatisticsPooling(nn.Module):
 
 
 class EcapaSEModule(nn.Module):
-    '''
+    """
     Squeeze and excitation module used in ECAPA_TDNN model and in EcapaSEResBlock
 
     Parameters
@@ -74,7 +76,8 @@ class EcapaSEModule(nn.Module):
     excitation : nn.Sequential
         A two-layer neural network that computes the channel-wise attention
         weights (excitations).
-    '''
+    """
+
     def __init__(self, in_channels: int, reduction: int = 8) -> None:
 
         super(EcapaSEModule, self).__init__()
@@ -83,11 +86,21 @@ class EcapaSEModule(nn.Module):
 
         self.squeeze = nn.AdaptiveAvgPool1d(1)
 
-        self.excitation = nn.Sequential( # Squeeze, Dense1, Relu, Dense2, Sigmoid
-            nn.Conv1d(in_channels=in_channels, out_channels=in_channels//reduction, kernel_size=1, bias=False),
+        self.excitation = nn.Sequential(  # Squeeze, Dense1, Relu, Dense2, Sigmoid
+            nn.Conv1d(
+                in_channels=in_channels,
+                out_channels=in_channels // reduction,
+                kernel_size=1,
+                bias=False,
+            ),
             nn.ReLU(),
-            nn.Conv1d(in_channels=in_channels//reduction, out_channels=in_channels, kernel_size=1, bias=False),
-            nn.Sigmoid()
+            nn.Conv1d(
+                in_channels=in_channels // reduction,
+                out_channels=in_channels,
+                kernel_size=1,
+                bias=False,
+            ),
+            nn.Sigmoid(),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -109,8 +122,9 @@ class EcapaSEModule(nn.Module):
         e = self.excitation(s)
         return e * x
 
+
 class EcapaSEResBlock(nn.Module):
-    '''
+    """
     Res2Net block and squeeze-excitation integrated together, used in ECAPA_TDNN model,
     this is the building block of the standard ECAPA_TDNN
 
@@ -154,35 +168,54 @@ class EcapaSEResBlock(nn.Module):
         Squeeze-and-Excitation module for channel attention.
     shortcut : nn.Module
         Shortcut connection (1x1 convolution or Identity) for the residual link.
-    '''
+    """
 
-    def __init__(self, in_channels: int, out_channels: int, split: int = 4,
-                 kernel_size: int = 3, padding: int = 1, dilation: int = 0) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        split: int = 4,
+        kernel_size: int = 3,
+        padding: int = 1,
+        dilation: int = 0,
+    ) -> None:
         super(EcapaSEResBlock, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=in_channels,
-                               out_channels=out_channels,
-                               kernel_size=1)
+        self.conv1 = nn.Conv1d(
+            in_channels=in_channels, out_channels=out_channels, kernel_size=1
+        )
         self.relu = nn.ReLU(inplace=True)
-        self.bn1 = nn.GroupNorm(1,out_channels)
+        self.bn1 = nn.GroupNorm(1, out_channels)
 
         self.width = out_channels // split
         self.split = split
-        self.convs = nn.ModuleList([
-            nn.Conv1d(self.width, self.width, kernel_size=kernel_size, dilation=dilation, padding=(dilation * (kernel_size - 1)) // 2)
-            for _ in range(split-1)
-        ])
+        self.convs = nn.ModuleList(
+            [
+                nn.Conv1d(
+                    self.width,
+                    self.width,
+                    kernel_size=kernel_size,
+                    dilation=dilation,
+                    padding=(dilation * (kernel_size - 1)) // 2,
+                )
+                for _ in range(split - 1)
+            ]
+        )
 
-        self.bns = nn.ModuleList([
-            nn.GroupNorm(1,self.width) for _ in range(split-1)
-        ])
-        self.conv2 = nn.Conv1d(in_channels=out_channels,
-                               out_channels=out_channels,
-                               kernel_size=1)
-        self.bn2 = nn.GroupNorm(1,out_channels)
+        self.bns = nn.ModuleList(
+            [nn.GroupNorm(1, self.width) for _ in range(split - 1)]
+        )
+        self.conv2 = nn.Conv1d(
+            in_channels=out_channels, out_channels=out_channels, kernel_size=1
+        )
+        self.bn2 = nn.GroupNorm(1, out_channels)
 
-        self.se =  EcapaSEModule(out_channels)
+        self.se = EcapaSEModule(out_channels)
 
-        self.shortcut = nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=1) if in_channels != out_channels else nn.Identity()
+        self.shortcut = (
+            nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=1)
+            if in_channels != out_channels
+            else nn.Identity()
+        )
 
     def forward(self, x: torch.Tensor, no_norm: bool = False) -> torch.Tensor:
         """Defines the forward pass for the EcapaSEResBlock.
@@ -215,7 +248,7 @@ class EcapaSEResBlock(nn.Module):
                 y_conv = self.bns[i](y_conv)
             y_conv = self.relu(y_conv)
 
-            y = y_conv + frames[i+1]
+            y = y_conv + frames[i + 1]
             outputs.append(y)
         x = torch.cat(outputs, 1)
 
@@ -252,15 +285,15 @@ class AttentiveStatisticsPooling(nn.Module):
         The attention network that computes the weights for each time step.
     """
 
-    def __init__(self, in_channels: int, eps: float = 1e-6, reduction: int = 128) -> None:
+    def __init__(
+        self, in_channels: int, eps: float = 1e-6, reduction: int = 128
+    ) -> None:
         super(AttentiveStatisticsPooling, self).__init__()
         self.in_channels = in_channels
         self.eps = eps
         self.reduction = reduction
         self.att = nn.Sequential(
-            nn.Linear(in_channels, reduction),
-            nn.ReLU(),
-            nn.Linear(reduction, 1)
+            nn.Linear(in_channels, reduction), nn.ReLU(), nn.Linear(reduction, 1)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -281,7 +314,7 @@ class AttentiveStatisticsPooling(nn.Module):
         """
 
         batch_size, num_channels, time_steps = x.shape
-        frames = x.transpose(1,2)
+        frames = x.transpose(1, 2)
         scores = self.att(frames)
         weights = F.softmax(scores.squeeze(-1), dim=1)
         weights = weights.unsqueeze(-1)
@@ -340,20 +373,22 @@ class ECAPA_TDNN(nn.Module):
     classifier : nn.Linear or None
         The output classifier layer. None if `num_classes` is not specified.
     """
-    def __init__(self,
-                 input_features: int,
-                 num_classes: Optional[int] = None,
-                 embedding_dim: int = 32,
-                 layer1_filt: int = 512,
-                 layer2_filt: int = 512,
-                 layer3_filt: int = 1024,
-                 layer4_filt: int = 1024,
-                 layer5_filt: int = 1500,
-                 dropout1: float = 0.25,
-                 dropout2: float = 0.25,
-                 dropout3: float = 0.25,
-                 dropout4: float = 0.25
-                ) -> None:
+
+    def __init__(
+        self,
+        input_features: int,
+        num_classes: Optional[int] = None,
+        embedding_dim: int = 32,
+        layer1_filt: int = 512,
+        layer2_filt: int = 512,
+        layer3_filt: int = 1024,
+        layer4_filt: int = 1024,
+        layer5_filt: int = 1500,
+        dropout1: float = 0.25,
+        dropout2: float = 0.25,
+        dropout3: float = 0.25,
+        dropout4: float = 0.25,
+    ) -> None:
         super().__init__()
 
         self.relu = nn.ReLU()
@@ -362,64 +397,61 @@ class ECAPA_TDNN(nn.Module):
             in_channels=input_features,
             out_channels=layer1_filt,
             kernel_size=3,
-            dilation=2
+            dilation=2,
         )
         self.dropout1 = nn.Dropout(dropout1)
         self.layer2 = EcapaSEResBlock(
-            in_channels=layer1_filt,
-            out_channels=layer2_filt,
-            kernel_size=3,
-            dilation=3
+            in_channels=layer1_filt, out_channels=layer2_filt, kernel_size=3, dilation=3
         )
         self.dropout2 = nn.Dropout(dropout2)
         self.layer3 = EcapaSEResBlock(
-            in_channels=layer2_filt,
-            out_channels=layer3_filt,
-            kernel_size=3,
-            dilation=4
+            in_channels=layer2_filt, out_channels=layer3_filt, kernel_size=3, dilation=4
         )
 
         self.dropout3 = nn.Dropout(dropout3)
 
         self.layer4 = EcapaSEResBlock(
-            in_channels=layer3_filt,
-            out_channels=layer4_filt,
-            kernel_size=3,
-            dilation=5
+            in_channels=layer3_filt, out_channels=layer4_filt, kernel_size=3, dilation=5
         )
 
-        self.cat_conv = nn.Conv1d(layer1_filt + layer2_filt + layer3_filt + layer4_filt, 1500, kernel_size=1)
+        self.cat_conv = nn.Conv1d(
+            layer1_filt + layer2_filt + layer3_filt + layer4_filt, 1500, kernel_size=1
+        )
         self.pooling = AttentiveStatisticsPooling(in_channels=1500)
 
-        self.ln = nn.GroupNorm(1,3000)
+        self.ln = nn.GroupNorm(1, 3000)
         self.dense = nn.Linear(in_features=3000, out_features=1024)
         self.embeddingLayer = nn.Linear(in_features=1024, out_features=embedding_dim)
         if num_classes is not None:
-            self.classifier = nn.Linear(in_features=embedding_dim, out_features=num_classes)
+            self.classifier = nn.Linear(
+                in_features=embedding_dim, out_features=num_classes
+            )
         else:
             self.classifier = None
 
-    def forward(self, x: torch.Tensor, return_embedding: bool = False, no_norm: bool = True) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, return_embedding: bool = False, no_norm: bool = True
+    ) -> torch.Tensor:
         """Defines the forward pass of the ECAPA-TDNN model.
 
-         Parameters
-         ----------
-         x : torch.Tensor
-             Input tensor of shape (N, C_in, T), where N is the batch size,
-             C_in is `input_features`, and T is the number of time steps.
-         return_embedding : bool, optional
-             If True, the model returns the final embedding. Otherwise, it
-             returns the output of the classifier (if it exists), by default False.
-         no_norm : bool, optional
-             If True, bypasses the group normalization layer before the dense
-             layers, by default True.
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (N, C_in, T), where N is the batch size,
+            C_in is `input_features`, and T is the number of time steps.
+        return_embedding : bool, optional
+            If True, the model returns the final embedding. Otherwise, it
+            returns the output of the classifier (if it exists), by default False.
+        no_norm : bool, optional
+            If True, bypasses the group normalization layer before the dense
+            layers, by default True.
 
-         Returns
-         -------
-         torch.Tensor
-             The output tensor. This can be the embedding vector (N, `embedding_dim`)
-             or the class logits (N, `num_classes`).
-         """
+        Returns
+        -------
+        torch.Tensor
+            The output tensor. This can be the embedding vector (N, `embedding_dim`)
+            or the class logits (N, `num_classes`).
+        """
         out1 = self.layer1(x)
         x = self.dropout1(out1)
         out2 = self.layer2(x)
@@ -428,8 +460,7 @@ class ECAPA_TDNN(nn.Module):
         x = self.dropout3(out3)
         out4 = self.layer4(x)
 
-
-        x_cat = torch.cat((out1,out2,out3, out4) ,dim=1)
+        x_cat = torch.cat((out1, out2, out3, out4), dim=1)
         x = self.relu(self.cat_conv(x_cat))
 
         x = self.pooling(x)
@@ -438,7 +469,7 @@ class ECAPA_TDNN(nn.Module):
         x = self.dense(x)
         x = self.relu(x)
         x = self.embeddingLayer(x)
-        x = F.normalize(x,p=2,dim=1)
+        x = F.normalize(x, p=2, dim=1)
         if return_embedding or self.classifier is None:
             return x
         else:
@@ -484,88 +515,101 @@ class XVectorEmbeddingModel(nn.Module):
         The output classifier layer. None if `num_classes` is not specified.
     """
 
-    def __init__(self,
-                 input_features: int,
-                 num_classes: Optional[int] = None,
-                 timesteps: int = 751,
-                 embedding_dim: int = 32,
-                 layer1_filt: int = 512,
-                 layer2_filt: int = 512,
-                 layer3_filt: int = 1024,
-                 layer4_filt: int = 1024,
-                 layer5_filt: int = 1500,
-                 layer_1_dilatation: int = 1,
-                 layer_2_dilatation: int = 2,
-                 layer_3_dilatation: int = 3,
-                 layer_1_stride: int = 1,
-                 layer_2_stride: int = 1,
-                 layer_3_stride: int = 2,
-                 dropout1: float = 0.25,
-                 dropout2: float = 0.25,
-                 dropout3: float = 0.25,
-                 dropout4: float = 0.25,
-                 ) -> None:
+    def __init__(
+        self,
+        input_features: int,
+        num_classes: Optional[int] = None,
+        timesteps: int = 751,
+        embedding_dim: int = 32,
+        layer1_filt: int = 512,
+        layer2_filt: int = 512,
+        layer3_filt: int = 1024,
+        layer4_filt: int = 1024,
+        layer5_filt: int = 1500,
+        layer_1_dilatation: int = 1,
+        layer_2_dilatation: int = 2,
+        layer_3_dilatation: int = 3,
+        layer_1_stride: int = 1,
+        layer_2_stride: int = 1,
+        layer_3_stride: int = 2,
+        dropout1: float = 0.25,
+        dropout2: float = 0.25,
+        dropout3: float = 0.25,
+        dropout4: float = 0.25,
+    ) -> None:
 
         super(XVectorEmbeddingModel, self).__init__()
 
         self.relu = nn.ReLU()
-        self.Frame1 = nn.Conv1d(in_channels=input_features,
-                                out_channels=layer1_filt,
-                                kernel_size=5,
-                                stride=layer_1_stride,
-                                dilation=layer_1_dilatation,
-                                padding=2,
-                                )
+        self.Frame1 = nn.Conv1d(
+            in_channels=input_features,
+            out_channels=layer1_filt,
+            kernel_size=5,
+            stride=layer_1_stride,
+            dilation=layer_1_dilatation,
+            padding=2,
+        )
         self.bn1 = nn.LayerNorm(layer1_filt)
         self.dropout1 = nn.Dropout(p=dropout1)
-        self.Frame2 = nn.Conv1d(in_channels=layer1_filt,
-                                out_channels=layer2_filt,
-                                kernel_size=3,
-                                stride=layer_2_stride,
-                                dilation=layer_2_dilatation,
-                                padding=2)
+        self.Frame2 = nn.Conv1d(
+            in_channels=layer1_filt,
+            out_channels=layer2_filt,
+            kernel_size=3,
+            stride=layer_2_stride,
+            dilation=layer_2_dilatation,
+            padding=2,
+        )
         self.bn2 = nn.LayerNorm(layer2_filt)
 
         self.dropout2 = nn.Dropout(p=dropout2)
 
-        self.Frame3 = nn.Conv1d(in_channels=layer2_filt,
-                                out_channels=layer3_filt,
-                                kernel_size=3,
-                                stride=layer_3_stride,
-                                dilation=layer_3_dilatation,
-                                padding=3)
+        self.Frame3 = nn.Conv1d(
+            in_channels=layer2_filt,
+            out_channels=layer3_filt,
+            kernel_size=3,
+            stride=layer_3_stride,
+            dilation=layer_3_dilatation,
+            padding=3,
+        )
         self.bn3 = nn.LayerNorm(layer3_filt)
 
         self.dropout3 = nn.Dropout(p=dropout3)
 
-        self.Frame4 = nn.Conv1d(in_channels=layer3_filt,
-                                out_channels=layer4_filt,
-                                kernel_size=1,
-                                stride=1,
-                                padding=0)
+        self.Frame4 = nn.Conv1d(
+            in_channels=layer3_filt,
+            out_channels=layer4_filt,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+        )
 
         self.bn4 = nn.LayerNorm(layer4_filt)
 
         self.dropout4 = nn.Dropout(p=dropout4)
 
-        self.Frame5 = nn.Conv1d(in_channels=layer4_filt,
-                                out_channels=layer5_filt,
-                                kernel_size=1,
-                                stride=1,
-                                padding=0)
+        self.Frame5 = nn.Conv1d(
+            in_channels=layer4_filt,
+            out_channels=layer5_filt,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+        )
 
         self.bn5 = nn.LayerNorm(layer5_filt)
 
         self.statPooling = StatisticsPooling(eps=1e-6)
 
-        self.embeddingLayer = nn.Linear(in_features=layer5_filt*2,
-                                        out_features=embedding_dim)
+        self.embeddingLayer = nn.Linear(
+            in_features=layer5_filt * 2, out_features=embedding_dim
+        )
         if num_classes is not None:
             self.classifier = nn.Linear(embedding_dim, num_classes)
         else:
             self.classifier = None
 
-    def forward(self, x: torch.Tensor, return_embedding: bool = False, no_norm: bool = False) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, return_embedding: bool = False, no_norm: bool = False
+    ) -> torch.Tensor:
         """Defines the forward pass of the X-Vector TDNN model.
 
         Parameters
@@ -627,9 +671,9 @@ class XVectorEmbeddingModel(nn.Module):
             return self.classifier(x)
 
 
-def get_standard_model(hparams: Dict[str, Any],
-                       input_features: int,
-                       num_classes: Optional[int]) -> XVectorEmbeddingModel:
+def get_standard_model(
+    hparams: Dict[str, Any], input_features: int, num_classes: Optional[int]
+) -> XVectorEmbeddingModel:
     """
     Utility function for creating standard TDNN model with hparams dictionary, instead of writing it all explicitly
 
@@ -658,32 +702,32 @@ def get_standard_model(hparams: Dict[str, Any],
     embedding_dim = hparams["embedding_dim"]
     dropout_rate = hparams["dropout_rate"]
 
-    model = XVectorEmbeddingModel(input_features=input_features,
-                                  num_classes=num_classes,
-                                  embedding_dim=embedding_dim,
-                                  dropout1=dropout_rate,
-                                  dropout2=dropout_rate,
-                                  dropout3=dropout_rate,
-                                  dropout4=dropout_rate,
-                                  layer1_filt=hparams["layer1_filters"],
-                                  layer2_filt=hparams["layer2_filters"],
-                                  layer3_filt=hparams["layer3_filters"],
-                                  layer4_filt=hparams["layer4_filters"],
-                                  layer5_filt=hparams["layer5_filters"],
-                                  layer_1_dilatation=hparams["layer_1_dilatation"],
-                                  layer_2_dilatation=hparams["layer_2_dilatation"],
-                                  layer_3_dilatation=hparams["layer_3_dilatation"],
-                                  layer_1_stride=hparams["layer_1_stride"],
-                                  layer_2_stride=hparams["layer_2_stride"],
-                                  layer_3_stride=hparams["layer_3_stride"], )
+    model = XVectorEmbeddingModel(
+        input_features=input_features,
+        num_classes=num_classes,
+        embedding_dim=embedding_dim,
+        dropout1=dropout_rate,
+        dropout2=dropout_rate,
+        dropout3=dropout_rate,
+        dropout4=dropout_rate,
+        layer1_filt=hparams["layer1_filters"],
+        layer2_filt=hparams["layer2_filters"],
+        layer3_filt=hparams["layer3_filters"],
+        layer4_filt=hparams["layer4_filters"],
+        layer5_filt=hparams["layer5_filters"],
+        layer_1_dilatation=hparams["layer_1_dilatation"],
+        layer_2_dilatation=hparams["layer_2_dilatation"],
+        layer_3_dilatation=hparams["layer_3_dilatation"],
+        layer_1_stride=hparams["layer_1_stride"],
+        layer_2_stride=hparams["layer_2_stride"],
+        layer_3_stride=hparams["layer_3_stride"],
+    )
     return model
 
 
-
-
-def get_ecapa_model(hparams: Dict[str, Any],
-                    input_features: int,
-                    num_classes: Optional[int]) -> ECAPA_TDNN:
+def get_ecapa_model(
+    hparams: Dict[str, Any], input_features: int, num_classes: Optional[int]
+) -> ECAPA_TDNN:
     """
     Utility function for creating ECAPA_TDNN model with hparams dictionary, instead of writing it all explicitly
 
@@ -710,29 +754,33 @@ def get_ecapa_model(hparams: Dict[str, Any],
     embedding_dim = hparams["embedding_dim"]
     dropout_rate = hparams["dropout_rate"]
 
-    model = ECAPA_TDNN(input_features=input_features,
-                                  num_classes=num_classes,
-                                  embedding_dim=embedding_dim,
-                                  dropout1=dropout_rate,
-                                  dropout2=dropout_rate,
-                                  dropout3=dropout_rate,
-                                  dropout4=dropout_rate,
-                                  layer1_filt=hparams["layer1_filters"],
-                                  layer2_filt=hparams["layer2_filters"],
-                                  layer3_filt=hparams["layer3_filters"],
-                                  layer4_filt=hparams["layer4_filters"],
-                                  layer5_filt=hparams["layer5_filters"])
+    model = ECAPA_TDNN(
+        input_features=input_features,
+        num_classes=num_classes,
+        embedding_dim=embedding_dim,
+        dropout1=dropout_rate,
+        dropout2=dropout_rate,
+        dropout3=dropout_rate,
+        dropout4=dropout_rate,
+        layer1_filt=hparams["layer1_filters"],
+        layer2_filt=hparams["layer2_filters"],
+        layer3_filt=hparams["layer3_filters"],
+        layer4_filt=hparams["layer4_filters"],
+        layer5_filt=hparams["layer5_filters"],
+    )
     return model
 
 
-def pretrain(hparams: Dict[str, Any],
-             device: Union[torch.device, str],
-             input_features: int,
-             num_classes: int,
-             dataloader: DataLoader,
-             writer: Optional[SummaryWriter] = None,
-             type: str = "standard",
-             fold: Union[str, int] = "") -> nn.Module:
+def pretrain(
+    hparams: Dict[str, Any],
+    device: Union[torch.device, str],
+    input_features: int,
+    num_classes: int,
+    dataloader: DataLoader,
+    writer: Optional[SummaryWriter] = None,
+    type: str = "standard",
+    fold: Union[str, int] = "",
+) -> nn.Module:
     """Creates and pretrains a model using a softmax cross-entropy loss.
 
     Parameters
@@ -772,7 +820,7 @@ def pretrain(hparams: Dict[str, Any],
         model = get_standard_model(hparams, input_features, num_classes).to(device)
     else:
         model = get_ecapa_model(hparams, input_features, num_classes).to(device)
-    if writer is not None and (fold=="" or fold==1):
+    if writer is not None and (fold == "" or fold == 1):
         rnd_sample = torch.randn(1, input_features, num_classes).to(device)
         writer.add_graph(model, rnd_sample)
 
@@ -805,18 +853,22 @@ def pretrain(hparams: Dict[str, Any],
         if writer is not None:
             writer.add_scalar(f"Pretrain/Loss{fold}", avg_loss, epoch)
             writer.add_scalar(f"Pretrain/Accuracy{fold}", acc, epoch)
-        print(f"[Pretrain] Epoch {epoch + 1}/{epochs}  Loss={avg_loss:.4f}  Acc={acc:.4f}")
+        print(
+            f"[Pretrain] Epoch {epoch + 1}/{epochs}  Loss={avg_loss:.4f}  Acc={acc:.4f}"
+        )
         scheduler.step()
     return model
 
 
-def fine_tune(model: Union[ECAPA_TDNN, XVectorEmbeddingModel],
-              hparams: Dict[str, Any],
-              device: Union[torch.device, str],
-              dataloader: DataLoader,
-              num_classes: int,
-              writer: Optional[SummaryWriter] = None,
-              fold: Union[str, int] = "") -> Union[ECAPA_TDNN, XVectorEmbeddingModel]:
+def fine_tune(
+    model: Union[ECAPA_TDNN, XVectorEmbeddingModel],
+    hparams: Dict[str, Any],
+    device: Union[torch.device, str],
+    dataloader: DataLoader,
+    num_classes: int,
+    writer: Optional[SummaryWriter] = None,
+    fold: Union[str, int] = "",
+) -> Union[ECAPA_TDNN, XVectorEmbeddingModel]:
     """
     Function training a model with ProxyNCALoss
 
@@ -852,9 +904,12 @@ def fine_tune(model: Union[ECAPA_TDNN, XVectorEmbeddingModel],
     embedding_dim = hparams["embedding_dim"]
 
     model.classifier = None
-    proxy_loss = ProxyNCALoss(num_classes=num_classes,
-                              embedding_dim=embedding_dim, scale=scale).to(device)
-    optimizer = optim.Adam(list(model.parameters()) + list(proxy_loss.parameters()), lr=lr)
+    proxy_loss = ProxyNCALoss(
+        num_classes=num_classes, embedding_dim=embedding_dim, scale=scale
+    ).to(device)
+    optimizer = optim.Adam(
+        list(model.parameters()) + list(proxy_loss.parameters()), lr=lr
+    )
     scheduler = ExponentialLR(optimizer, gamma=weight_decay)
 
     model.train()
@@ -876,10 +931,9 @@ def fine_tune(model: Union[ECAPA_TDNN, XVectorEmbeddingModel],
     return model
 
 
-def create_embeddings(model: nn.Module,
-                      X_train: np.ndarray,
-                      X_test: np.ndarray,
-                      hparams: Dict[str, Any]) -> Tuple[np.ndarray, np.ndarray]:
+def create_embeddings(
+    model: nn.Module, X_train: np.ndarray, X_test: np.ndarray, hparams: Dict[str, Any]
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Function creates embedding vectors using an already trained model
 
@@ -913,28 +967,50 @@ def create_embeddings(model: nn.Module,
     with torch.no_grad():
         for epoch in X_train:
             embeddings.append(
-                model(torch.tensor(epoch, dtype=torch.float, requires_grad=False).unsqueeze(0), return_embedding=True,
-                      no_norm=False))
+                model(
+                    torch.tensor(
+                        epoch, dtype=torch.float, requires_grad=False
+                    ).unsqueeze(0),
+                    return_embedding=True,
+                    no_norm=False,
+                )
+            )
         for epoch in X_test:
             test_embeddings.append(
-                model(torch.tensor(epoch, dtype=torch.float, requires_grad=False).unsqueeze(0), return_embedding=True,
-                      no_norm=False))
-    embd = torch.stack(embeddings).reshape((X_train.shape[0], hparams["embedding_dim"])).numpy()
-    test_embd = torch.stack(test_embeddings).reshape((X_test.shape[0], hparams["embedding_dim"])).numpy()
+                model(
+                    torch.tensor(
+                        epoch, dtype=torch.float, requires_grad=False
+                    ).unsqueeze(0),
+                    return_embedding=True,
+                    no_norm=False,
+                )
+            )
+    embd = (
+        torch.stack(embeddings)
+        .reshape((X_train.shape[0], hparams["embedding_dim"]))
+        .numpy()
+    )
+    test_embd = (
+        torch.stack(test_embeddings)
+        .reshape((X_test.shape[0], hparams["embedding_dim"]))
+        .numpy()
+    )
     return embd, test_embd
 
 
-
-
-def fine_tune_arcface(model: Union[ECAPA_TDNN, XVectorEmbeddingModel],
-                      hparams: Dict[str, Any],
-                      device: Union[torch.device, str],
-                      dataloader: DataLoader,
-                      num_classes: int,
-                      writer: Optional[SummaryWriter] = None,
-                      return_final_loss: bool = False,
-                      fold: Union[str, int] = ""
-                      ) -> Union[Union[ECAPA_TDNN, XVectorEmbeddingModel], Tuple[Union[ECAPA_TDNN, XVectorEmbeddingModel], float]]:
+def fine_tune_arcface(
+    model: Union[ECAPA_TDNN, XVectorEmbeddingModel],
+    hparams: Dict[str, Any],
+    device: Union[torch.device, str],
+    dataloader: DataLoader,
+    num_classes: int,
+    writer: Optional[SummaryWriter] = None,
+    return_final_loss: bool = False,
+    fold: Union[str, int] = "",
+) -> Union[
+    Union[ECAPA_TDNN, XVectorEmbeddingModel],
+    Tuple[Union[ECAPA_TDNN, XVectorEmbeddingModel], float],
+]:
     """
     Function training an exisiting model using ArcFace loss
 
@@ -970,9 +1046,9 @@ def fine_tune_arcface(model: Union[ECAPA_TDNN, XVectorEmbeddingModel],
           fine-tuned model and the average loss from the final epoch.
     """
 
-    lr      = hparams["proxy_learning_rate"]
-    decay   = hparams["proxy_learning_rate_decay"]
-    epochs  = hparams["proxy_epochs"]
+    lr = hparams["proxy_learning_rate"]
+    decay = hparams["proxy_learning_rate_decay"]
+    epochs = hparams["proxy_epochs"]
     emb_dim = hparams["embedding_dim"]
 
     model.classifier = None
@@ -982,12 +1058,11 @@ def fine_tune_arcface(model: Union[ECAPA_TDNN, XVectorEmbeddingModel],
         out_features=num_classes,
         s=hparams.get("scale", 1.0),
         m=hparams.get("margin", 0.001),
-        easy_margin=hparams.get("easy_margin", False)
+        easy_margin=hparams.get("easy_margin", False),
     ).to(device)
 
     optimizer = torch.optim.Adam(
-        list(model.parameters()) + list(arcface.parameters()),
-        lr=lr
+        list(model.parameters()) + list(arcface.parameters()), lr=lr
     )
     scheduler = ExponentialLR(optimizer, gamma=decay)
 

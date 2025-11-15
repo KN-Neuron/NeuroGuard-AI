@@ -26,9 +26,7 @@ def add_gaussian_noise(eeg: np.ndarray, std: float = 0.01) -> np.ndarray:
 
 
 def get_dataset(
-    hparams: Dict[str, Any],
-    X_train: np.ndarray,
-    y_train: np.ndarray
+    hparams: Dict[str, Any], X_train: np.ndarray, y_train: np.ndarray
 ) -> DataLoader:
     """
     Create a DataLoader for training the TDNN model.
@@ -78,12 +76,13 @@ class TDNNDataset(Dataset):
     std : float
         Standard deviation for Gaussian noise.
     """
+
     def __init__(
         self,
         data: np.ndarray,
         labels: np.ndarray,
         augmentation: bool = False,
-        std: float = 0.01
+        std: float = 0.01,
     ) -> None:
         """
         Initialize the dataset.

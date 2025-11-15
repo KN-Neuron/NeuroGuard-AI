@@ -21,6 +21,7 @@ class SimilarityCentroidsVerifier(object):
         The embeddings used to compute the true centroids.
 
     """
+
     def __init__(self, alpha: float = 0.9) -> None:
         """Initialize the verifier.
 
@@ -32,8 +33,11 @@ class SimilarityCentroidsVerifier(object):
         self.alpha = 0.9
         self.centroids = {}
 
-    def compute_true_centroids(self, labels: Union[np.ndarray, List[int]],
-                               embeddings: Union[np.ndarray, torch.Tensor]) -> Dict[int, np.ndarray]:
+    def compute_true_centroids(
+        self,
+        labels: Union[np.ndarray, List[int]],
+        embeddings: Union[np.ndarray, torch.Tensor],
+    ) -> Dict[int, np.ndarray]:
         """Compute the exact centroids for each class from scratch.
 
         This method overwrites any existing centroids.
@@ -76,10 +80,12 @@ class SimilarityCentroidsVerifier(object):
         unique_labels = np.unique(labels_np)
         embeddings_cpu = embeddings.cpu()
         for label in unique_labels:
-            mask = (labels.cpu() == label)
+            mask = labels.cpu() == label
             new_centroid = embeddings_cpu[mask].mean(dim=0).detach().numpy()
             if label in self.centroids:
-                self.centroids[label] = self.alpha * self.centroids[label] + (1 - self.alpha) * new_centroid
+                self.centroids[label] = (
+                    self.alpha * self.centroids[label] + (1 - self.alpha) * new_centroid
+                )
             else:
                 self.centroids[label] = new_centroid
 
@@ -93,8 +99,9 @@ class SimilarityCentroidsVerifier(object):
         """
         return self.centroids
 
-    def euclidean_distance(self, a: Union[np.ndarray, torch.Tensor],
-                           b: Union[np.ndarray, torch.Tensor]) -> float:
+    def euclidean_distance(
+        self, a: Union[np.ndarray, torch.Tensor], b: Union[np.ndarray, torch.Tensor]
+    ) -> float:
         """Compute Euclidean distance between two vectors.
 
         Parameters
@@ -111,7 +118,9 @@ class SimilarityCentroidsVerifier(object):
         """
         return np.linalg.norm(a - b)
 
-    def compute_similarity(self, embedding: Union[np.ndarray, torch.Tensor], label: int) -> float:
+    def compute_similarity(
+        self, embedding: Union[np.ndarray, torch.Tensor], label: int
+    ) -> float:
         """Compute distance from an embedding to the centroid of a specific class.
 
         Parameters
@@ -126,12 +135,18 @@ class SimilarityCentroidsVerifier(object):
         float
             The Euclidean distance from the embedding to the specified class centroid.
         """
-        embedding_np = embedding.cpu().detach().numpy() if isinstance(embedding, torch.Tensor) else embedding
+        embedding_np = (
+            embedding.cpu().detach().numpy()
+            if isinstance(embedding, torch.Tensor)
+            else embedding
+        )
         centroid = self.centroids[label]
         distance = self.euclidean_distance(embedding_np, centroid)
         return distance
 
-    def classify_embedding(self, embedding: Union[np.ndarray, torch.Tensor]) -> Tuple[Any, float]:
+    def classify_embedding(
+        self, embedding: Union[np.ndarray, torch.Tensor]
+    ) -> Tuple[Any, float]:
         """Assign a label to a single embedding by nearest-centroid.
 
         Parameters
@@ -154,7 +169,9 @@ class SimilarityCentroidsVerifier(object):
                 min_label = label
         return min_label, min_distance
 
-    def classify_batch(self, embeddings: Iterable[Union[np.ndarray, torch.Tensor]]) -> List[Tuple[Any, float]]:
+    def classify_batch(
+        self, embeddings: Iterable[Union[np.ndarray, torch.Tensor]]
+    ) -> List[Tuple[Any, float]]:
         """Classify a batch of embeddings.
 
         Parameters
@@ -195,8 +212,12 @@ class SimilarityCentroidsVerifier(object):
         return avg_distances
 
 
-def get_accuracy(embd: np.ndarray, test_embd: np.ndarray,
-                 y_train_encoded: np.ndarray, y_test_encoded: np.ndarray) -> Tuple[float, float]:
+def get_accuracy(
+    embd: np.ndarray,
+    test_embd: np.ndarray,
+    y_train_encoded: np.ndarray,
+    y_test_encoded: np.ndarray,
+) -> Tuple[float, float]:
     """Calculates training and testing accuracy using a nearest centroid classifier.
 
     The function first normalizes the training and testing embeddings to the
@@ -228,17 +249,23 @@ def get_accuracy(embd: np.ndarray, test_embd: np.ndarray,
     train_acc = 0
     for i in range(len(train_normalized)):
         true_label = y_train_encoded[i]
-        predicted_label, _ = centroid_verifier_actual.classify_embedding(train_normalized[i])
+        predicted_label, _ = centroid_verifier_actual.classify_embedding(
+            train_normalized[i]
+        )
         if predicted_label == true_label:
             train_acc += 1
     train_acc = train_acc / len(train_normalized)
 
     centroid_verifier_actual_test = SimilarityCentroidsVerifier()
-    centroid_verifier_actual_test.compute_true_centroids(y_test_encoded, test_normalized)
+    centroid_verifier_actual_test.compute_true_centroids(
+        y_test_encoded, test_normalized
+    )
     test_acc = 0
     for i in range(len(test_normalized)):
         true_label = y_test_encoded[i]
-        predicted_label, _ = centroid_verifier_actual_test.classify_embedding(test_normalized[i])
+        predicted_label, _ = centroid_verifier_actual_test.classify_embedding(
+            test_normalized[i]
+        )
         if predicted_label == true_label:
             test_acc += 1
     test_acc = test_acc / len(test_normalized)

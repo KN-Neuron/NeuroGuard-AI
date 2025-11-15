@@ -9,6 +9,7 @@ from .types import EEGDataNDArray, EEGEpochsNDArray
 @dataclass
 class EEGData:
     """Represents EEG data with associated metadata."""
+
     epoch: EEGDataNDArray
     participant_id: str
     label: str
@@ -18,12 +19,15 @@ class EEGData:
     def __post_init__(self) -> None:
         """Validate that epoch has the expected shape."""
         if self.epoch.ndim != 2:
-            raise ValueError(f"Epoch data must be 2D (channels, time_points), got shape {self.epoch.shape}")
+            raise ValueError(
+                f"Epoch data must be 2D (channels, time_points), got shape {self.epoch.shape}"
+            )
 
 
 @dataclass
 class EEGParticipant:
     """Represents information about an EEG participant."""
+
     participant_id: str
     file: str
     metadata: Optional[Dict[str, Any]] = None
@@ -32,6 +36,7 @@ class EEGParticipant:
 @dataclass
 class EEGEpochs:
     """Container for multiple EEG epochs."""
+
     epochs: EEGEpochsNDArray  # Shape: (n_epochs, n_channels, n_time_points)
     participant_id: str
     labels: List[str]
@@ -41,6 +46,7 @@ class EEGEpochs:
 @dataclass
 class EEGPreprocessingConfig:
     """Configuration for EEG preprocessing."""
+
     lfreq: float = 1.0
     hfreq: float = 100.0
     notch_filter: Optional[List[int]] = None
@@ -57,6 +63,7 @@ class EEGPreprocessingConfig:
 @dataclass
 class ModelConfig:
     """Configuration for EEG model parameters."""
+
     num_channels: int = 4
     num_classes: int = 4
     num_time_points: int = 751
@@ -75,6 +82,7 @@ class ModelConfig:
 @dataclass
 class TrainingConfig:
     """Configuration for training parameters."""
+
     n_epochs: int = 10
     batch_size: int = 32
     learning_rate: float = 0.001
@@ -91,5 +99,5 @@ __all__ = [
     "EEGEpochs",
     "EEGPreprocessingConfig",
     "ModelConfig",
-    "TrainingConfig"
+    "TrainingConfig",
 ]

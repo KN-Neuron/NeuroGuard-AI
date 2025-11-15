@@ -1,4 +1,5 @@
 """EEG signal preprocessor module."""
+
 from typing import List, Optional, Union
 import numpy as np
 import torch
@@ -27,7 +28,7 @@ class EEGPreprocessor:
         self,
         data: Union[EEGDataNDArray, EEGDataTensor],
         low_freq: float = 1.0,
-        high_freq: float = 40.0
+        high_freq: float = 40.0,
     ) -> Union[EEGDataNDArray, EEGDataTensor]:
         """
         Apply bandpass filter to EEG data.
@@ -45,9 +46,7 @@ class EEGPreprocessor:
         return data
 
     def notch_filter(
-        self,
-        data: Union[EEGDataNDArray, EEGDataTensor],
-        freqs: List[float] = [50.0]
+        self, data: Union[EEGDataNDArray, EEGDataTensor], freqs: List[float] = [50.0]
     ) -> Union[EEGDataNDArray, EEGDataTensor]:
         """
         Apply notch filter to remove line noise.
@@ -63,8 +62,7 @@ class EEGPreprocessor:
         return data
 
     def normalize(
-        self,
-        data: Union[EEGDataNDArray, EEGDataTensor]
+        self, data: Union[EEGDataNDArray, EEGDataTensor]
     ) -> Union[EEGDataNDArray, EEGDataTensor]:
         """
         Normalize EEG data to zero mean and unit variance.
@@ -85,8 +83,7 @@ class EEGPreprocessor:
             return (data - mean) / (std + 1e-8)
 
     def preprocess(
-        self,
-        data: Union[EEGDataNDArray, EEGDataTensor]
+        self, data: Union[EEGDataNDArray, EEGDataTensor]
     ) -> Union[EEGDataNDArray, EEGDataTensor]:
         """
         Apply the full preprocessing pipeline to EEG data.

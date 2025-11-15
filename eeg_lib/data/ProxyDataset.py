@@ -4,6 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from typing import Tuple, Any
 
+
 class ProxyDataset(Dataset):
     """
     A simple dataset wrapper for EEG or feature-based data.

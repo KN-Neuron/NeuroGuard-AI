@@ -25,10 +25,7 @@ class TripletLoss(nn.Module):
         self.margin = margin
 
     def forward(
-        self,
-        anchor: torch.Tensor,
-        positive: torch.Tensor,
-        negative: torch.Tensor
+        self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor
     ) -> torch.Tensor:
         """
         Compute the triplet loss.
@@ -67,11 +64,7 @@ class OnlineTripletLoss(nn.Module):
         self.margin = margin
         self.swap = swap
 
-    def forward(
-        self,
-        embeddings: torch.Tensor,
-        labels: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, embeddings: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         """
         Compute the online triplet loss.
 
@@ -90,14 +83,16 @@ class OnlineTripletLoss(nn.Module):
         mask_neg = ~mask_pos
 
         # For each anchor, find hardest positive and negative
-        pos_distances = pairwise_dist.masked_fill(~mask_pos, float('inf'))
-        neg_distances = pairwise_dist.masked_fill(~mask_neg, float('-inf'))
+        pos_distances = pairwise_dist.masked_fill(~mask_pos, float("inf"))
+        neg_distances = pairwise_dist.masked_fill(~mask_neg, float("-inf"))
 
         # Get hardest positive and negative (excluding self)
-        mask_not_self = ~torch.eye(labels.size(0), dtype=torch.bool, device=labels.device)
+        mask_not_self = ~torch.eye(
+            labels.size(0), dtype=torch.bool, device=labels.device
+        )
 
-        pos_distances = pos_distances.masked_fill(~mask_not_self, float('-inf'))
-        neg_distances = neg_distances.masked_fill(~mask_not_self, float('-inf'))
+        pos_distances = pos_distances.masked_fill(~mask_not_self, float("-inf"))
+        neg_distances = neg_distances.masked_fill(~mask_not_self, float("-inf"))
 
         hardest_pos_dist = torch.max(pos_distances, dim=1)[0]
         hardest_neg_dist = torch.min(neg_distances, dim=1)[0]

@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+
+
 class ProxyNCALoss(nn.Module):
     """
     Proxy Neighborhood Component Analysis (ProxyNCA) loss.
@@ -17,15 +19,16 @@ class ProxyNCALoss(nn.Module):
             cosine similarities before the softmax. If None, a learnable
             scalar parameter is initialized to 1.0.
     """
+
     def __init__(
         self,
         num_classes: int,
         embedding_dim: int,
-        scale: float | nn.Parameter | None = None
+        scale: float | nn.Parameter | None = None,
     ) -> None:
         super(ProxyNCALoss, self).__init__()
         self.proxies = nn.Embedding(num_classes, embedding_dim)
-        nn.init.kaiming_normal_(self.proxies.weight, mode='fan_out')
+        nn.init.kaiming_normal_(self.proxies.weight, mode="fan_out")
 
         if scale is not None:
             self.scale = scale

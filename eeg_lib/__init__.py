@@ -17,5 +17,5 @@ __all__ = [
     "OnlineTripletLoss",
     "EEGEmbedder",
     "EEGNetEmbeddingModel",
-    "helpers"
+    "helpers",
 ]

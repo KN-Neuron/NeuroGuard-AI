@@ -22,11 +22,8 @@ class TripletDataset(Dataset):
     user_id_dict : dict
         Mapping of participant ID -> list of indices corresponding to that participant's samples.
     """
-    def __init__(
-        self,
-        participant_ids: np.ndarray,
-        epochs: np.ndarray
-    ) -> None:
+
+    def __init__(self, participant_ids: np.ndarray, epochs: np.ndarray) -> None:
         """
         Initialize the TripletDataset.
 
@@ -44,9 +41,13 @@ class TripletDataset(Dataset):
         unique_ids = np.unique(self.participant_ids)
         self.user_id_dict = {}
         for part_id in unique_ids:
-            self.user_id_dict[part_id] = np.where(self.participant_ids == part_id)[0].tolist()
+            self.user_id_dict[part_id] = np.where(self.participant_ids == part_id)[
+                0
+            ].tolist()
 
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Retrieve a triplet of EEG samples: (anchor, positive, negative).
 
@@ -67,11 +68,17 @@ class TripletDataset(Dataset):
         positive_index = index
         while positive_index == index:
             positive_index = np.random.choice(self.user_id_dict[anchor_label])
-        positive = torch.tensor(self.eeg_data[positive_index], dtype=torch.float).unsqueeze(0)
+        positive = torch.tensor(
+            self.eeg_data[positive_index], dtype=torch.float
+        ).unsqueeze(0)
 
-        negative_label = np.random.choice([l for l in self.user_id_dict.keys() if l != anchor_label])
+        negative_label = np.random.choice(
+            [l for l in self.user_id_dict.keys() if l != anchor_label]
+        )
         negative_index = np.random.choice(self.user_id_dict[negative_label])
-        negative = torch.tensor(self.eeg_data[negative_index], dtype=torch.float).unsqueeze(0)
+        negative = torch.tensor(
+            self.eeg_data[negative_index], dtype=torch.float
+        ).unsqueeze(0)
 
         return anchor, positive, negative
 

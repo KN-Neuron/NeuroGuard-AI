@@ -4,7 +4,6 @@ import torch
 import torch.nn.functional as F
 
 
-
 class ArcMarginProduct(nn.Module):
     """
     Implements the ArcFace loss (Additive Angular Margin Loss).
@@ -40,6 +39,7 @@ class ArcMarginProduct(nn.Module):
         Scalar tensor representing the cross-entropy loss
         after applying ArcFace margin transformation.
     """
+
     def __init__(self, in_features, out_features, s=30.0, m=0.50, easy_margin=False):
         super().__init__()
         self.in_features = in_features
@@ -51,12 +51,14 @@ class ArcMarginProduct(nn.Module):
 
         self.cos_m = math.cos(m)
         self.sin_m = math.sin(m)
-        self.th    = math.cos(math.pi - m)
-        self.mm    = math.sin(math.pi - m) * m
+        self.th = math.cos(math.pi - m)
+        self.mm = math.sin(math.pi - m) * m
 
         self.easy_margin = easy_margin
 
-    def forward(self, embeddings: torch.Tensor, labels: torch.LongTensor) -> torch.Tensor:
+    def forward(
+        self, embeddings: torch.Tensor, labels: torch.LongTensor
+    ) -> torch.Tensor:
         """
         Forward pass through the ArcMarginProduct layer.
 
@@ -73,10 +75,10 @@ class ArcMarginProduct(nn.Module):
             Cross-entropy loss computed with ArcFace angular margins.
         """
         normalized_emb = F.normalize(embeddings, p=2, dim=1)
-        normalized_w   = F.normalize(self.weight,   p=2, dim=1)
+        normalized_w = F.normalize(self.weight, p=2, dim=1)
 
         cosine = F.linear(normalized_emb, normalized_w)
-        radicand = torch.clamp(1.0 - cosine ** 2, min=0.0)
+        radicand = torch.clamp(1.0 - cosine**2, min=0.0)
         sine = torch.sqrt(radicand)
 
         phi = cosine * self.cos_m - sine * self.sin_m
