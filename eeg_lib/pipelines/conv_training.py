@@ -1,7 +1,17 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from typing import Any, Callable, Union
 
-def train_triplet_epoch(model, dataloader, loss_fn, optimizer, device):
+
+def train_triplet_epoch(
+    model: nn.Module,
+    dataloader: DataLoader[Any],
+    loss_fn: Callable[..., torch.Tensor],
+    optimizer: torch.optim.Optimizer,
+    device: torch.device
+) -> float:
     model.train()
     total_loss = 0.0
 
@@ -18,7 +28,7 @@ def train_triplet_epoch(model, dataloader, loss_fn, optimizer, device):
 
         # Backward and optimize
         optimizer.zero_grad()
-        loss.backward()
+        loss.backward()  # type: ignore[no-untyped-call]
         optimizer.step()
 
         total_loss += loss.item()
@@ -27,17 +37,22 @@ def train_triplet_epoch(model, dataloader, loss_fn, optimizer, device):
     return avg_loss
 
 
-def train_triplet(model, train_loader, criterion, optimizer, device, n_epochs=10):
+def train_triplet(
+    model: nn.Module,
+    train_loader: DataLoader[Any],
+    criterion: Callable[..., torch.Tensor],
+    optimizer: torch.optim.Optimizer,
+    device: torch.device,
+    n_epochs: int = 10
+) -> None:
     for epoch in range(1, n_epochs + 1):
         loss = train_triplet_epoch(model, train_loader, criterion, optimizer, device)
         print(f"Epoch {epoch}/{n_epochs} | Triplet Loss: {loss:.4f}")
 
 
-def pairwise_distances(embeddings):
+def pairwise_distances(embeddings: torch.Tensor) -> torch.Tensor:
     """
     Compute pairwise Euclidean distances between embeddings
-    embeddings: (batch_size, embed_dim)
-    returns: (batch_size, batch_size) matrix of distances
     """
     dot_product = torch.matmul(embeddings, embeddings.t())
     square_norm = torch.diagonal(dot_product)
@@ -47,7 +62,13 @@ def pairwise_distances(embeddings):
     return distances
 
 
-def train_triplet_epoch_online(model, dataloader, loss_fn, optimizer, device):
+def train_triplet_epoch_online(
+    model: nn.Module,
+    dataloader: DataLoader[Any],
+    loss_fn: Callable[..., torch.Tensor],
+    optimizer: torch.optim.Optimizer,
+    device: torch.device
+) -> float:
     """
         Trains a model for one epoch using triplet loss with online triplet mining.
 
@@ -81,7 +102,7 @@ def train_triplet_epoch_online(model, dataloader, loss_fn, optimizer, device):
 
         batch_size = labels.size(0)
 
-        triplet_loss = 0.0
+        triplet_loss: Union[float, torch.Tensor] = 0.0
         triplets_count = 0
 
         for i in range(batch_size):
@@ -106,19 +127,27 @@ def train_triplet_epoch_online(model, dataloader, loss_fn, optimizer, device):
             negative_emb = embeddings[hardest_negative_idx]
 
             loss = loss_fn(anchor_emb.unsqueeze(0), positive_emb.unsqueeze(0), negative_emb.unsqueeze(0))
-            triplet_loss += loss
+            triplet_loss = triplet_loss + loss if isinstance(triplet_loss, torch.Tensor) else loss
             triplets_count += 1
 
-        if triplets_count > 0:
-            triplet_loss /= triplets_count
-            triplet_loss.backward()
+        if triplets_count > 0 and isinstance(triplet_loss, torch.Tensor):
+            triplet_loss = triplet_loss / triplets_count
+            triplet_loss.backward()  # type: ignore[no-untyped-call]
             optimizer.step()
             total_loss += triplet_loss.item()
 
     avg_loss = total_loss / len(dataloader)
     return avg_loss
 
-def train_triplet_online(model, train_loader, criterion, optimizer, device, n_epochs=10):
+
+def train_triplet_online(
+    model: nn.Module,
+    train_loader: DataLoader[Any],
+    criterion: Callable[..., torch.Tensor],
+    optimizer: torch.optim.Optimizer,
+    device: torch.device,
+    n_epochs: int = 10
+) -> None:
     """
         Trains a model using train_triplet_epoch_online function
         and prints training status after every epoch

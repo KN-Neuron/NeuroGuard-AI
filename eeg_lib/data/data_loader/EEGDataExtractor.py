@@ -54,7 +54,7 @@ class EEGDataExtractor:
             file_path = os.path.join(self.data_dir, file)
             eeg = mne.io.read_raw_fif(file_path, preload=True)
             eeg.pick_types(eeg=True, stim=False, eog=False, exclude="bads")
-            # Convert units (from µV to V if needed)
+            
             eeg.apply_function(lambda x: x * 10**-6)
             eeg.filter(l_freq=self.lfreq, h_freq=self.hfreq)
             eeg.notch_filter(self.notch_filter)
@@ -62,7 +62,7 @@ class EEGDataExtractor:
             if not event_id:
                 print(f"No events found in file {file}")
                 continue
-            # reverse mapping: integer code -> label name (e.g., 1 -> 'red')
+            
             id_to_label = {v: k for k, v in event_id.items()}
             epochs = mne.Epochs(
                 raw=eeg,
@@ -88,7 +88,7 @@ class EEGDataExtractor:
             ))
         return eeg_and_events, participants
 
-    def extract_dataframe(self) -> Tuple[pd.DataFrame, List[Dict[str, Any]]]:
+    def extract_dataframe(self) -> Tuple[pd.DataFrame, List[EEGParticipant]]:
         """
         Iterates over each participant's data, extracts each epoch as a numpy array,
         and returns a DataFrame with columns: participant_id, epoch, label.
@@ -97,11 +97,10 @@ class EEGDataExtractor:
         eeg_and_events, participants = self._load_eeg()
         data = []
         for item in eeg_and_events:
-            participant_id = item["participant_id"]
-            epochs = item["epochs"]
-            labels = item["labels"]
-            # Retrieve all epochs as a 3D np array: (n_epochs, n_channels, n_times)
-            epoch_data = epochs.get_data()
+            participant_id = item.participant_id
+            epochs = item.epochs
+            labels = item.labels
+            epoch_data = epochs
 
             for i, label in enumerate(labels):
                 single_epoch_data = epoch_data[i]  
@@ -115,7 +114,7 @@ class EEGDataExtractor:
         df = pd.DataFrame(data)
         return df, participants
 
-    def extract_erp_dataframe(self) -> Tuple[pd.DataFrame, List[Dict[str, Any]]]:
+    def extract_erp_dataframe(self) -> Tuple[pd.DataFrame, List[EEGParticipant]]:
         """
         Iterates over each participant's data, computes ERP by averaging epochs per label,
         and returns a DataFrame with columns: participant_id, label, erp.
@@ -125,20 +124,20 @@ class EEGDataExtractor:
         data = []
 
         for item in eeg_and_events:
-            participant_id = item["participant_id"]
-            epochs = item["epochs"]
-            labels = item["labels"]
-            epoch_data = epochs.get_data()  # shape: (n_epochs, n_channels, n_times)
+            participant_id = item.participant_id
+            epochs = item.epochs
+            labels = item.labels
+            epoch_data = epochs  
 
-            # Group epochs by label and average to form ERP
-            label_to_epochs = {}
+            
+            label_to_epochs: Dict[str, List[Any]] = {}
             for i, label in enumerate(labels):
                 if label not in label_to_epochs:
                     label_to_epochs[label] = []
                 label_to_epochs[label].append(epoch_data[i])
 
             for label, epoch_list in label_to_epochs.items():
-                erp = np.mean(epoch_list, axis=0)  # shape: (n_channels, n_times)
+                erp = np.mean(epoch_list, axis=0)  
                 erp = np.mean(erp, axis =0)
                 data.append({
                     "participant_id": participant_id,

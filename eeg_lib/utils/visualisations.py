@@ -1,22 +1,28 @@
+"""Visualization utilities for EEG data and embeddings."""
 import matplotlib.pyplot as plt
 
 import numpy as np
+import numpy.typing as npt
 import umap.umap_ as umap
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE  # type: ignore[import-untyped]
+from typing import Any, Tuple, List, Optional
 
 
-def calculate_and_plot_distances(embeddings_array, participant_ids_array, bins=30):
+def calculate_and_plot_distances(
+    embeddings_array: npt.NDArray[Any],
+    participant_ids_array: npt.NDArray[Any],
+    bins: int = 30
+) -> Tuple[List[np.floating[Any]], List[np.floating[Any]]]:
     """
     Calculate and plot the distribution of pairwise distances for genuine and imposter pairs.
 
     Args:
-        embeddings_array (np.ndarray): Array of embeddings of shape (N, D), where N is the number of samples and D is the embedding dimension.
-        participant_ids_array (np.ndarray): Array of participant IDs corresponding to the embeddings.
-        bins (int): Number of bins for the histogram.
+        embeddings_array: Array of embeddings of shape (N, D), where N is the number of samples and D is the embedding dimension.
+        participant_ids_array: Array of participant IDs corresponding to the embeddings.
+        bins: Number of bins for the histogram.
 
     Returns:
-        tuple: A tuple containing two lists - genuine_distances and imposter_distances.
+        A tuple containing two lists - genuine_distances and imposter_distances.
     """
     genuine_distances = []
     imposter_distances = []
@@ -43,18 +49,17 @@ def calculate_and_plot_distances(embeddings_array, participant_ids_array, bins=3
 
 
 def visualize_tsne(
-    embeddings, participant_ids, title="t-SNE Visualization of EEG Embeddings"
-):
+    embeddings: npt.NDArray[Any],
+    participant_ids: npt.NDArray[Any],
+    title: str = "t-SNE Visualization of EEG Embeddings"
+) -> None:
     """
     Visualize embeddings using t-SNE.
 
     Args:
-        embeddings (np.ndarray): The embeddings array of shape (N, D), where N is the number of samples and D is the embedding dimension.
-        participant_ids (np.ndarray): Array of participant IDs corresponding to the embeddings.
-        title (str): Title of the plot.
-
-    Returns:
-        None
+        embeddings: The embeddings array of shape (N, D), where N is the number of samples and D is the embedding dimension.
+        participant_ids: Array of participant IDs corresponding to the embeddings.
+        title: Title of the plot.
     """
     tsne = TSNE(n_components=2, random_state=42)
     embeddings_2d = tsne.fit_transform(embeddings)
@@ -74,10 +79,21 @@ def visualize_tsne(
 
 
 def plot_predictions(
-    train_data, train_labels, test_data, test_labels, predictions=None
-):
+    train_data: npt.NDArray[Any],
+    train_labels: npt.NDArray[Any],
+    test_data: npt.NDArray[Any],
+    test_labels: npt.NDArray[Any],
+    predictions: Optional[npt.NDArray[Any]] = None
+) -> None:
     """
     Plots linear training data and test data and compares predictions.
+
+    Args:
+        train_data: Training input data
+        train_labels: Training target labels
+        test_data: Test input data
+        test_labels: Test target labels
+        predictions: Predictions to compare against test data
     """
     plt.figure(figsize=(10, 7))
 
@@ -92,28 +108,24 @@ def plot_predictions(
 
 
 def visualize_umap(
-    embeddings,
-    participant_ids,
-    n_neighbors=15,
-    min_dist=0.1,
-    random_state=42,
-    title="UMAP Visualization of EEG Embeddings",
-):
+    embeddings: npt.NDArray[Any],
+    participant_ids: npt.NDArray[Any],
+    n_neighbors: int = 15,
+    min_dist: float = 0.1,
+    random_state: int = 42,
+    title: str = "UMAP Visualization of EEG Embeddings",
+) -> None:
     """
     Visualize embeddings using UMAP.
 
     Args:
-        embeddings (np.ndarray): The embeddings array of shape (N, D), where N is the number of samples and D is the embedding dimension.
-        participant_ids (np.ndarray): Array of participant IDs corresponding to the embeddings.
-        n_neighbors (int): The size of the local neighborhood (in terms of number of neighboring points) used for manifold approximation.
-        min_dist (float): The effective minimum distance between embedded points.
-        random_state (int): Random seed for reproducibility.
-        title (str): Title of the plot.
-
-    Returns:
-        None
+        embeddings: The embeddings array of shape (N, D), where N is the number of samples and D is the embedding dimension.
+        participant_ids: Array of participant IDs corresponding to the embeddings.
+        n_neighbors: The size of the local neighborhood (in terms of number of neighboring points) used for manifold approximation.
+        min_dist: The effective minimum distance between embedded points.
+        random_state: Random seed for reproducibility.
+        title: Title of the plot.
     """
-
     reducer = umap.UMAP(
         n_neighbors=n_neighbors, min_dist=min_dist, random_state=random_state
     )

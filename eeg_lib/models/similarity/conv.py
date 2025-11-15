@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from typing import Optional
+
 
 class EEGEmbedder(nn.Module):
-    def __init__(self, embedding_dim=128):
+    def __init__(self, embedding_dim: int = 128):
         super(EEGEmbedder, self).__init__()
 
         self.cnn = nn.Sequential(
@@ -33,7 +34,16 @@ class EEGEmbedder(nn.Module):
             nn.Tanh()  # or ReLU, depending on use
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the EEGEmbedder model.
+
+        Args:
+            x: Input tensor of shape (batch_size, n_channels, n_time_points)
+
+        Returns:
+            Output embedding tensor of shape (batch_size, embedding_dim)
+        """
         # x: (B, 4, 751)
         x = x.unsqueeze(1)  # -> (B, 1, 4, 751)
         x = self.cnn(x)

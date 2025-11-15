@@ -1,15 +1,17 @@
 import os
 import random
-from typing import Tuple
+from typing import Tuple, Optional, Dict, Any, Callable, List
 import pandas as pd
 
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
 from eeg_lib.commons.constant import NUM_WORKERS
+from eeg_lib.datastructures import EEGData
+from ..types import EEGDataTensor
 
 
-class EEGNetColorDataset(Dataset):
+class EEGNetColorDataset(Dataset[Tuple[torch.Tensor, torch.Tensor]]):
     """
     A simple Dataset for EEG data stored in a DataFrame.
 
@@ -18,10 +20,10 @@ class EEGNetColorDataset(Dataset):
       - 'label': a string or numeric label (e.g., color name).
     """
 
-    def __init__(self, df, label_to_idx=None, transform=None):
+    def __init__(self, df: pd.DataFrame, label_to_idx: Optional[Dict[str, int]] = None, transform: Optional[Callable[..., Any]] = None):
         """
         Args:
-            df (pandas.DataFrame): Must have 'epoch' and 'label' columns.
+            df (pd.DataFrame): Must have 'epoch' and 'label' columns.
             label_to_idx (dict): Optional map from label string to int.
                                  If None, one is created automatically.
             transform (callable): Optional transform function for data augmentation or normalization.
@@ -35,10 +37,14 @@ class EEGNetColorDataset(Dataset):
             unique_labels = sorted(self.df["label"].unique())
             self.label_to_idx = {lbl: idx for idx, lbl in enumerate(unique_labels)}
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.df)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Returns:
+            Input tensor of shape (1, n_channels, n_time_points) and label tensor
+        """
         row = self.df.iloc[index]
         # epoch_data is shape (4, 751)
         epoch_data = row["epoch"]
@@ -51,13 +57,13 @@ class EEGNetColorDataset(Dataset):
             x = self.transform(x)
 
         label_str = row["label"]
-        y = self.label_to_idx[label_str]
-        y = torch.tensor(y, dtype=torch.long)  # if using standard classification
+        y_idx = self.label_to_idx[label_str]
+        y = torch.tensor(y_idx, dtype=torch.long)  # if using standard classification
 
         return x, y
 
 
-class TripletEEGDataset(Dataset):
+class TripletEEGDataset(Dataset[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]):
     """
     A Dataset that returns (anchor, positive, negative) EEG epochs for triplet training.
 
@@ -68,14 +74,14 @@ class TripletEEGDataset(Dataset):
         negative from a different participant.
     """
 
-    def __init__(self, df):
+    def __init__(self, df: pd.DataFrame):
         """
         Args:
             df (pd.DataFrame): Must contain 'participant_id' and 'epoch' columns.
         """
         self.df = df.reset_index(drop=True)
 
-        self.participants_dict = {}
+        self.participants_dict: Dict[str, List[int]] = {}
         for idx, row in self.df.iterrows():
             pid = row["participant_id"]
             if pid not in self.participants_dict:
@@ -84,10 +90,10 @@ class TripletEEGDataset(Dataset):
 
         self.participant_ids = sorted(list(self.participants_dict.keys()))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.df)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns a tuple: (anchor_tensor, positive_tensor, negative_tensor).
         Each is shape (1, 4, 751) if we add the channel dimension.

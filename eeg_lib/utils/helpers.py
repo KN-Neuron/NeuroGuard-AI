@@ -3,12 +3,13 @@ from eeg_lib.commons.constant import RESULTS_FOLDER
 
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
-from typing import Optional
+from typing import Optional, Tuple, Union, Any
 from datetime import datetime
 import os
+import pandas as pd
 
 
-def accuracy_fn(y_true: torch.Tensor, y_pred: torch.Tensor):
+def accuracy_fn(y_true: torch.Tensor, y_pred: torch.Tensor) -> float:
     """Calculates accuracy between truth labels and predictions.
 
     Args:
@@ -16,20 +17,20 @@ def accuracy_fn(y_true: torch.Tensor, y_pred: torch.Tensor):
         y_pred (torch.Tensor): Predictions to be compared to predictions.
 
     Returns:
-        [torch.float]: Accuracy value between y_true and y_pred, e.g. 78.45
+        float: Accuracy value between y_true and y_pred, e.g. 78.45
     """
     correct = torch.eq(y_true, y_pred).sum().item()
     acc = (correct / len(y_pred)) * 100
     return acc
 
 
-def print_train_time(start: float, end: float, device=None):
+def print_train_time(start: float, end: float, device: Optional[str] = None) -> float:
     """Prints difference between start and end time.
 
     Args:
         start (float): Start time of computation (preferred in timeit format).
         end (float): End time of computation.
-        device ([type], optional): Device that compute is running on. Defaults to None.
+        device (str, optional): Device that compute is running on. Defaults to None.
 
     Returns:
         float: time between start and end in seconds (higher is longer).
@@ -39,17 +40,18 @@ def print_train_time(start: float, end: float, device=None):
     return total_time
 
 
-def set_seeds(seed: int = 42):
+def set_seeds(seed: int = 42) -> None:
     """Sets random sets for torch operations.
 
     Args:
         seed (int, optional): Random seed to set. Defaults to 42.
     """
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
 
 
-def get_device():
+def get_device() -> str:
     """
     Determines the best available device for computation.
 
@@ -102,10 +104,29 @@ def create_writer(
         )
 
     print(f"[INFO] Created SummaryWriter, saving to: {log_dir}...")
-    return SummaryWriter(log_dir=log_dir)
+    return SummaryWriter(log_dir=log_dir)  # type: ignore[no-untyped-call]
 
 
-def split_train_test(eeg_df, test_size=0.2, random_state=0):
+def split_train_test(
+    eeg_df: pd.DataFrame,
+    test_size: float = 0.2,
+    random_state: int = 0
+) -> Tuple[pd.DataFrame, pd.DataFrame, Any, Any]:
+    """
+    Split EEG data into train and test sets based on participants.
+
+    Args:
+        eeg_df (pd.DataFrame): DataFrame containing EEG data with 'participant_id' column
+        test_size (float): Proportion of data to use for testing (default 0.2)
+        random_state (int): Random seed for reproducibility (default 0)
+
+    Returns:
+        Tuple containing:
+            - train_df: Training set DataFrame
+            - test_df: Test set DataFrame
+            - train_participants: List of participant IDs in training set
+            - test_participants: List of participant IDs in test set
+    """
     unique_participants = eeg_df["participant_id"].unique()
 
     train_participants, test_participants = train_test_split(
