@@ -2,7 +2,7 @@
 from sklearn.manifold import TSNE
 from sklearn.metrics import roc_curve
 from eeg_lib.utils.helpers import get_device
-from eeg_lib.models.verification.EEGNet import EEGNetEmbeddingModel
+from eeg_lib.models.verification.EEGnet import EEGNetEmbeddingModel
 from eeg_lib.types import EEGDataTensor, ModelOutputTensor
 
 from typing import Optional, Tuple, Dict, Any, List

@@ -3,7 +3,7 @@ from .commons import constant, logger
 from .data import data_setup, encode_features_labels
 from .losses import TripletLoss, OnlineTripletLoss
 from .models.similarity.conv import EEGEmbedder
-from .models.verification.EEGNet import EEGNetEmbeddingModel
+from .models.verification.EEGnet import EEGNetEmbeddingModel
 from .utils import helpers
 
 __all__ = [
