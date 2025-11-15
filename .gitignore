@@ -190,4 +190,10 @@ notebooks/eeg_extractor_grid_search_v3.json
 .idea
 *.fif
 
+result_summaries
+result_summaries/
+/result_summaries/
+
+.DS_Store
+
 # End of https://www.toptal.com/developers/gitignore/api/python
