@@ -180,4 +180,10 @@ datasets
 
 *.fif
 
+result_summaries
+result_summaries/
+/result_summaries/
+
+.DS_Store
+
 # End of https://www.toptal.com/developers/gitignore/api/python
