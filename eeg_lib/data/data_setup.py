@@ -20,7 +20,12 @@ class EEGNetColorDataset(Dataset[Tuple[torch.Tensor, torch.Tensor]]):
       - 'label': a string or numeric label (e.g., color name).
     """
 
-    def __init__(self, df: pd.DataFrame, label_to_idx: Optional[Dict[str, int]] = None, transform: Optional[Callable[..., Any]] = None):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        label_to_idx: Optional[Dict[str, int]] = None,
+        transform: Optional[Callable[..., Any]] = None,
+    ):
         """
         Args:
             df (pd.DataFrame): Must have 'epoch' and 'label' columns.
@@ -93,7 +98,9 @@ class TripletEEGDataset(Dataset[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]
     def __len__(self) -> int:
         return len(self.df)
 
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(
+        self, index: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Returns a tuple: (anchor_tensor, positive_tensor, negative_tensor).
         Each is shape (1, 4, 751) if we add the channel dimension.

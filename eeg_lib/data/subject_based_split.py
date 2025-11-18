@@ -1,4 +1,5 @@
 """EEG subject-based data splitting utilities."""
+
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
@@ -13,8 +14,10 @@ def split_by_user(
     y: torch.Tensor,
     labels: torch.Tensor,
     test_size: float = 0.3,
-    random_state: int = 42
-) -> Tuple[EEGDataTensor, torch.Tensor, EEGDataTensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    random_state: int = 42,
+) -> Tuple[
+    EEGDataTensor, torch.Tensor, EEGDataTensor, torch.Tensor, torch.Tensor, torch.Tensor
+]:
     """
     Splits EEG data by user - training users are not in test set
 
@@ -36,9 +39,7 @@ def split_by_user(
     """
     unique_users = np.unique(y.numpy())
     train_users, test_users = train_test_split(
-        unique_users,
-        test_size=test_size,
-        random_state=random_state
+        unique_users, test_size=test_size, random_state=random_state
     )
 
     # Index selection
@@ -60,7 +61,7 @@ def create_dataloaders(
     y_train: torch.Tensor,
     X_test: EEGDataTensor,
     y_test: torch.Tensor,
-    batch_size: int = 32
+    batch_size: int = 32,
 ) -> Tuple[DataLoader[Any], DataLoader[Any]]:
     """
     Create data loaders for triplet training.
@@ -89,7 +90,7 @@ def create_online_dataloaders(
     y_train: torch.Tensor,
     X_test: EEGDataTensor,
     y_test: torch.Tensor,
-    batch_size: int = 32
+    batch_size: int = 32,
 ) -> Tuple[DataLoader[Any], DataLoader[Any]]:
     """
     Create data loaders for online training.

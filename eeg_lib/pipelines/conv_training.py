@@ -10,13 +10,15 @@ def train_triplet_epoch(
     dataloader: DataLoader[Any],
     loss_fn: Callable[..., torch.Tensor],
     optimizer: torch.optim.Optimizer,
-    device: torch.device
+    device: torch.device,
 ) -> float:
     model.train()
     total_loss = 0.0
 
     for batch in dataloader:
-        anchor, positive, negative = (x.to(device) for x in batch[:3])  # unpack first 3 items
+        anchor, positive, negative = (
+            x.to(device) for x in batch[:3]
+        )  # unpack first 3 items
 
         # Forward pass
         emb_anchor = model(anchor)
@@ -43,7 +45,7 @@ def train_triplet(
     criterion: Callable[..., torch.Tensor],
     optimizer: torch.optim.Optimizer,
     device: torch.device,
-    n_epochs: int = 10
+    n_epochs: int = 10,
 ) -> None:
     for epoch in range(1, n_epochs + 1):
         loss = train_triplet_epoch(model, train_loader, criterion, optimizer, device)
@@ -67,24 +69,24 @@ def train_triplet_epoch_online(
     dataloader: DataLoader[Any],
     loss_fn: Callable[..., torch.Tensor],
     optimizer: torch.optim.Optimizer,
-    device: torch.device
+    device: torch.device,
 ) -> float:
     """
-        Trains a model for one epoch using triplet loss with online triplet mining.
+    Trains a model for one epoch using triplet loss with online triplet mining.
 
-        For each batch, dynamically selects the hardest positive and hardest negative
-        samples for each anchor, computes triplet loss, and updates model parameters.
+    For each batch, dynamically selects the hardest positive and hardest negative
+    samples for each anchor, computes triplet loss, and updates model parameters.
 
-        Args:
-            model (torch.nn.Module): The neural network model to train.
-            dataloader (torch.utils.data.DataLoader): Dataloader providing (inputs, labels) batches.
-            loss_fn (callable): Triplet loss function (e.g., `torch.nn.TripletMarginLoss`).
-            optimizer (torch.optim.Optimizer): Optimizer for updating model parameters.
-            device (torch.device): Device to run computations on (e.g., "cuda" or "cpu").
+    Args:
+        model (torch.nn.Module): The neural network model to train.
+        dataloader (torch.utils.data.DataLoader): Dataloader providing (inputs, labels) batches.
+        loss_fn (callable): Triplet loss function (e.g., `torch.nn.TripletMarginLoss`).
+        optimizer (torch.optim.Optimizer): Optimizer for updating model parameters.
+        device (torch.device): Device to run computations on (e.g., "cuda" or "cpu").
 
-        Returns:
-            float: The average triplet loss for the epoch.
-        """
+    Returns:
+        float: The average triplet loss for the epoch.
+    """
 
     model.train()
     total_loss = 0.0
@@ -109,25 +111,37 @@ def train_triplet_epoch_online(
             anchor_label = labels[i]
             anchor_dist = distances[i]
 
-            positive_mask = (labels == anchor_label) & (torch.arange(batch_size).to(device) != i)
+            positive_mask = (labels == anchor_label) & (
+                torch.arange(batch_size).to(device) != i
+            )
             negative_mask = labels != anchor_label
 
             if positive_mask.sum() == 0 or negative_mask.sum() == 0:
                 continue
 
-            hardest_positive_dist, hardest_positive_idx = torch.max(anchor_dist * positive_mask.float(), dim=0)
+            hardest_positive_dist, hardest_positive_idx = torch.max(
+                anchor_dist * positive_mask.float(), dim=0
+            )
 
             neg_distances = anchor_dist.clone()
             neg_distances[~negative_mask] = 1e6  # mask out positives
 
-            hardest_negative_dist, hardest_negative_idx = torch.min(neg_distances, dim=0)
+            hardest_negative_dist, hardest_negative_idx = torch.min(
+                neg_distances, dim=0
+            )
 
             anchor_emb = embeddings[i]
             positive_emb = embeddings[hardest_positive_idx]
             negative_emb = embeddings[hardest_negative_idx]
 
-            loss = loss_fn(anchor_emb.unsqueeze(0), positive_emb.unsqueeze(0), negative_emb.unsqueeze(0))
-            triplet_loss = triplet_loss + loss if isinstance(triplet_loss, torch.Tensor) else loss
+            loss = loss_fn(
+                anchor_emb.unsqueeze(0),
+                positive_emb.unsqueeze(0),
+                negative_emb.unsqueeze(0),
+            )
+            triplet_loss = (
+                triplet_loss + loss if isinstance(triplet_loss, torch.Tensor) else loss
+            )
             triplets_count += 1
 
         if triplets_count > 0 and isinstance(triplet_loss, torch.Tensor):
@@ -146,22 +160,23 @@ def train_triplet_online(
     criterion: Callable[..., torch.Tensor],
     optimizer: torch.optim.Optimizer,
     device: torch.device,
-    n_epochs: int = 10
+    n_epochs: int = 10,
 ) -> None:
     """
-        Trains a model using train_triplet_epoch_online function
-        and prints training status after every epoch
+    Trains a model using train_triplet_epoch_online function
+    and prints training status after every epoch
 
-        Args:
-        model (torch.nn.Module): The neural network model to train.
-        train_loader (torch.utils.data.DataLoader): Dataloader for training set
-        criterion: (callable): Loss function
-        optimizer (torch.optim.Optimizer): Optimizer for updating model parameters.
-        device (torch.device): Device to run computations on (e.g., "cuda" or "cpu").
-        n_epochs (integer): Number of epochs for training
+    Args:
+    model (torch.nn.Module): The neural network model to train.
+    train_loader (torch.utils.data.DataLoader): Dataloader for training set
+    criterion: (callable): Loss function
+    optimizer (torch.optim.Optimizer): Optimizer for updating model parameters.
+    device (torch.device): Device to run computations on (e.g., "cuda" or "cpu").
+    n_epochs (integer): Number of epochs for training
 
     """
     for epoch in range(1, n_epochs + 1):
-        loss = train_triplet_epoch_online(model, train_loader, criterion, optimizer, device)
+        loss = train_triplet_epoch_online(
+            model, train_loader, criterion, optimizer, device
+        )
         print(f"Epoch {epoch}/{n_epochs} | Triplet Loss: {loss:.4f}")
-

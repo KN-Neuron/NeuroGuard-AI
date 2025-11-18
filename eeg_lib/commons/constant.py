@@ -8,6 +8,7 @@ import torch
 @dataclass
 class EEGConfig:
     """Configuration class for EEG-related constants and settings."""
+
     sampling_rate: int = 251
     num_of_classes: int = 2
     num_of_electrodes: int = 4
@@ -27,7 +28,6 @@ class EEGConfig:
                 "beta": (14, 31),
                 "gamma": (31, 49),
             }
-
 
 
 eeg_config = EEGConfig()
