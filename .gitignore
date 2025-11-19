@@ -181,7 +181,23 @@ Kolory
 Kolory/
 datasets
 
+notebooks/images
+notebooks/runs
+notebooks/runs_ECAPA
+notebooks/runs_ECAPA_colors
+notebooks/runs_ECAPA_real
+notebooks/eeg_extractor_grid_search.json
+notebooks/eeg_extractor_grid_search_v2.json
+notebooks/eeg_extractor_grid_search_v3.json
+.gitlab-ci.yml
+.idea
 *.fif
+
+result_summaries
+result_summaries/
+/result_summaries/
+
+.DS_Store
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 gridsearch.ipynb
