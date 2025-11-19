@@ -1,5 +1,3 @@
-
-
 if __name__ == "__main__":
     eegnet_model.eval()
     save_model(eegnet_model, "eegnet_triplet")

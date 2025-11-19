@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from typing import Tuple
 
 
 class EEGNetEmbeddingModel(nn.Module):
@@ -110,9 +111,12 @@ class EEGNetEmbeddingModel(nn.Module):
 
         self.embedding_layer = nn.Linear(flattened_size, embedding_dimension)
 
-        self.apply_max_norm_to_layer(self.spatial_conv_block[0], max_norm_depthwise)
+        self.classification_layer = nn.Linear(embedding_dimension, num_classes)
 
-    def apply_max_norm_to_layer(self, layer: nn.Module, max_norm_value: float):
+        self.apply_max_norm_to_layer(self.spatial_conv_block[0], max_norm_depthwise)
+        self.apply_max_norm_to_layer(self.classification_layer, max_norm_linear)
+
+    def apply_max_norm_to_layer(self, layer: nn.Module, max_norm_value: float) -> None:
         """
         Apply a max-norm constraint to the weights of a given layer.
 
@@ -126,24 +130,22 @@ class EEGNetEmbeddingModel(nn.Module):
                     param.data, p=2, dim=0, maxnorm=max_norm_value
                 )
 
-    def forward(self, input_tensor: torch.Tensor):
+    def forward(self, input_tensor: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass through the EEGNetEmbeddingModel.
 
         Args:
-            input_tensor (torch.Tensor): Input tensor of shape
-                (batch_size, 1, num_channels, num_time_points).
+            input_tensor: Input tensor of shape (batch_size, 1, num_channels, num_time_points).
 
         Returns:
             tuple:
-                - embedding_vector (torch.Tensor): The output embedding vector of shape
-                  (batch_size, embedding_dimension) for each input.
-                - classification_logits (torch.Tensor): The classification logits of shape
-                  (batch_size, num_classes) for each input.
+                - embedding_vector: The output embedding vector of shape (batch_size, embedding_dimension) for each input.
+                - classification_logits: The classification logits of shape (batch_size, num_classes) for each input.
         """
         x = self.temporal_conv_block(input_tensor)
         x = self.spatial_conv_block(x)
         x = self.separable_conv_block(x)
         x = self.flatten_layer(x)
         embedding_vector = self.embedding_layer(x)
-        return embedding_vector
+        classification_logits = self.classification_layer(embedding_vector)
+        return embedding_vector, classification_logits

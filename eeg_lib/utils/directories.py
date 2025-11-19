@@ -1,10 +1,14 @@
+"""Directory and file handling utilities for EEG data."""
+
+import torch
 from pathlib import Path
 import os
-import requests
+import requests  # type: ignore[import-untyped]
 import zipfile
+from typing import Union
 
 
-def walk_through_dir(dir_path: str):
+def walk_through_dir(dir_path: str) -> None:
     """
     Walks through dir_path returning its contents.
     Args:
@@ -60,3 +64,34 @@ def download_data(source: str, destination: str, remove_source: bool = True) -> 
             os.remove(data_path / target_file)
 
     return image_path
+
+
+def save_model(model: torch.nn.Module, target_dir: str, model_name: str) -> Path:
+    """Saves a PyTorch model to a target directory.
+
+    Args:
+      model: A target PyTorch model to save.
+      target_dir: A directory for saving the model to.
+      model_name: A filename for the saved model. Should include
+        either ".pth" or ".pt" as the file extension.
+
+    Returns:
+        Path to the saved model file.
+
+    Example usage:
+      save_model(model=model_0,
+                 target_dir="models",
+                 model_name="05_going_modular_tingvgg_model.pth")
+    """
+    target_dir_path = Path(target_dir)
+    target_dir_path.mkdir(parents=True, exist_ok=True)
+
+    assert model_name.endswith(".pth") or model_name.endswith(
+        ".pt"
+    ), "model_name should end with '.pt' or '.pth'"
+    model_save_path = target_dir_path / model_name
+
+    print(f"[INFO] Saving model to: {model_save_path}")
+    torch.save(obj=model.state_dict(), f=model_save_path)
+
+    return model_save_path

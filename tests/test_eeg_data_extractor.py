@@ -13,8 +13,9 @@ class TestEEGDataExtractor(unittest.TestCase):
     @patch("mne.io.read_raw_fif")
     @patch("mne.events_from_annotations")
     @patch("mne.Epochs")
-    
-    def test_extract_dataframe(self, mock_epochs, mock_events_from_annotations, mock_read_raw_fif, mock_listdir):
+    def test_extract_dataframe(
+        self, mock_epochs, mock_events_from_annotations, mock_read_raw_fif, mock_listdir
+    ):
         mock_listdir.return_value = ["dummy.fif"]
 
         dummy_raw = MagicMock()
@@ -32,17 +33,16 @@ class TestEEGDataExtractor(unittest.TestCase):
         dummy_epochs = MagicMock()
         dummy_epochs.events = events
         # Symulujemy 2 epoki, np. każda epoka to sygnał 2-kanałowy z 3 punktami czasowymi.
-        dummy_epochs.get_data.return_value = np.array([
-            [[1, 2, 3], [4, 5, 6]],
-            [[7, 8, 9], [10, 11, 12]]
-        ])
+        dummy_epochs.get_data.return_value = np.array(
+            [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]]
+        )
         mock_epochs.return_value = dummy_epochs
 
         extractor = EEGDataExtractor(data_dir="dummy_dir", tmin=0, tmax=1)
         df, participants = extractor.extract_dataframe()
         self.assertIsInstance(df, pd.DataFrame)
         df = cast(pd.DataFrame, df)
-        
+
         self.assertIn("participant_id", df.columns)
         self.assertIn("epoch", df.columns)
         self.assertIn("label", df.columns)
