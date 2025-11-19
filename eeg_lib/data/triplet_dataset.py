@@ -94,7 +94,9 @@ class HardTripletEEGDataset(
         label_to_indices: Dict[int, List[int]] = {}
         for idx, label in enumerate(self.labels):
             label = label.item()
-            label_to_indices.setdefault(label, []).append(idx)
+            if label not in label_to_indices:
+                label_to_indices[label] = []
+            label_to_indices[label].append(idx)
         return label_to_indices
 
     def _compute_embeddings(self) -> torch.Tensor:
@@ -102,7 +104,7 @@ class HardTripletEEGDataset(
         with torch.no_grad():
             embeddings = []
             for x in self.data:
-                x = x.unsqueeze(0).to(self.device)  # add batch dimension
+                x = x.unsqueeze(0).to(self.device)
                 embedding = self.model(x)
                 embeddings.append(embedding.cpu())
             return torch.stack(embeddings)
@@ -126,16 +128,13 @@ class HardTripletEEGDataset(
         ]
 
         if not positive_indices:
-            # No other positive samples, fallback to anchor itself or handle differently
             positive = anchor
         else:
             pos_embeddings = self.embeddings[positive_indices]
-            # Calculate distances to find the farthest positive (hardest positive)
             dists = torch.norm(pos_embeddings - anchor_embedding, dim=-1)
             hardest_positive_idx = positive_indices[torch.argmax(dists)]
             positive = self.data[hardest_positive_idx]
 
-        # Hard Negative
         negative_indices = []
         for lbl in self.label_to_indices:
             if lbl != anchor_label:
@@ -152,7 +151,6 @@ class HardTripletEEGDataset(
             negative_indices = self.label_to_indices[chosen_label]
 
         neg_embeddings = self.embeddings[negative_indices]
-        # Calculate distances to find the closest negative (hardest negative)
         dists = torch.norm(neg_embeddings - anchor_embedding, dim=-1)
         hardest_negative_idx = negative_indices[torch.argmin(dists)]
         negative = self.data[hardest_negative_idx]

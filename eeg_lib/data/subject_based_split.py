@@ -42,7 +42,6 @@ def split_by_user(
         unique_users, test_size=test_size, random_state=random_state
     )
 
-    # Index selection
     train_idx = [i for i, label in enumerate(y) if label.item() in train_users]
     test_idx = [i for i, label in enumerate(y) if label.item() in test_users]
 
