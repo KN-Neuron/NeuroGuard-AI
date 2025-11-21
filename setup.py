@@ -28,6 +28,8 @@ setup(
         "matplotlib",
         "pandas",
         "mne",
+        "umap-learn>=0.5.0",
+        "seaborn>=0.11.0",
     ],
     extras_require={
         "dev": ["pytest", "black", "flake8"],

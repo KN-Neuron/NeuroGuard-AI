@@ -203,3 +203,5 @@ result_summaries/
 gridsearch.ipynb
 
 *.json
+result_summaries/
+runs/
