@@ -1,5 +1,3 @@
-"""Type definitions for EEG data structures and tensor shapes."""
-
 from typing import Any, TypeVar, Union
 import numpy as np
 import numpy.typing as npt

@@ -3,10 +3,10 @@ import torch.nn as nn
 from torch.nn import LayerNorm
 from torch.optim.lr_scheduler import StepLR, ExponentialLR, ReduceLROnPlateau
 from torch import optim
-from eeg_lib.losses.ProxyNCALoss import ProxyNCALoss
+from eeg_lib.losses.proxynca_loss import ProxyNCALoss
 import torch.nn.functional as F
 import math
-from eeg_lib.losses.ArcFaceLoss import ArcMarginProduct
+from eeg_lib.losses.arcface_loss import ArcMarginProduct
 from typing import Optional, Dict, Any, Union, Tuple
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
