@@ -51,18 +51,9 @@ class EEGDataExtractorV2:
         for file in files:
             participant_id = os.path.splitext(file)[0]
             file_path = os.path.join(self.data_dir, file)
-            eeg = mne.io.read_raw_fif(file_path, preload=True)
-            eeg.pick_types(eeg=True, stim=False, eog=False, exclude="bads")
 
-            # Convert units (if needed)
-            convert_to_mv = lambda x: x * 10**-6
-            eeg.apply_function()
+            eeg = self._process_eeg_file(file_path)
 
-            # Filtering
-            eeg.filter(l_freq=self.lfreq, h_freq=self.hfreq)
-            eeg.notch_filter(self.notch_filter)
-
-            # Event extraction
             events, event_id = mne.events_from_annotations(eeg)
             if not event_id:
                 print(f"No events found in file {file}")
@@ -70,19 +61,7 @@ class EEGDataExtractorV2:
 
             id_to_label = {v: k for k, v in event_id.items()}
 
-            # Amplitude-based rejection criteria (150 µV)
-            reject_criteria = dict(eeg=150e-6)
-
-            epochs = mne.Epochs(
-                raw=eeg,
-                events=events,
-                event_id=event_id,
-                tmin=self.tmin,
-                tmax=self.tmax,
-                baseline=self.baseline,
-                reject=reject_criteria,
-                preload=True,
-            )
+            epochs = self._create_epochs_with_rejection(eeg, events, event_id)
 
             numeric_labels = epochs.events[:, -1]
             labels = [id_to_label.get(l, "unknown") for l in numeric_labels]
@@ -93,6 +72,43 @@ class EEGDataExtractorV2:
             participants.append({"participant_id": participant_id, "file": file})
 
         return eeg_and_events, participants
+
+    def _process_eeg_file(self, file_path):
+        """Load and preprocess an EEG file with channel selection and filtering."""
+        eeg = mne.io.read_raw_fif(file_path, preload=True)
+        eeg = self._select_eeg_channels(eeg)
+        eeg = self._convert_units_to_millivolts(eeg)
+        eeg = self._apply_filters(eeg)
+        return eeg
+
+    def _select_eeg_channels(self, eeg):
+        """Select only EEG channels, excluding stimulus and EOG channels."""
+        return eeg.pick_types(eeg=True, stim=False, eog=False, exclude="bads")
+
+    def _convert_units_to_millivolts(self, eeg):
+        """Convert EEG units from microvolts to millivolts."""
+        microvolts_to_millivolts_conversion_factor = 10**-6
+        return eeg.apply_function(lambda x: x * microvolts_to_millivolts_conversion_factor)
+
+    def _apply_filters(self, eeg):
+        """Apply bandpass and notch filtering to the EEG data."""
+        eeg.filter(l_freq=self.lfreq, h_freq=self.hfreq)
+        eeg.notch_filter(self.notch_filter)
+        return eeg
+
+    def _create_epochs_with_rejection(self, eeg, events, event_id):
+        """Create epochs from the filtered EEG data with artifact rejection."""
+        artifact_rejection_criteria = dict(eeg=150e-6)
+        return mne.Epochs(
+            raw=eeg,
+            events=events,
+            event_id=event_id,
+            tmin=self.tmin,
+            tmax=self.tmax,
+            baseline=self.baseline,
+            reject=artifact_rejection_criteria,
+            preload=True,
+        )
 
     def extract_dataframe(self) -> Tuple[pd.DataFrame, List[Dict[str, Any]]]:
         """
@@ -134,18 +150,17 @@ class EEGDataExtractorV2:
             participant_id = item["participant_id"]
             epochs = item["epochs"]
             labels = item["labels"]
-            epoch_data = epochs.get_data()  # shape: (n_epochs, n_channels, n_times)
+            epoch_data = epochs.get_data()
 
-            # Group epochs by label and average to form ERP
-            label_to_epochs = {}
+            epochs_by_label = {}
             for i, label in enumerate(labels):
-                if label not in label_to_epochs:
-                    label_to_epochs[label] = []
-                label_to_epochs[label].append(epoch_data[i])
+                if label not in epochs_by_label:
+                    epochs_by_label[label] = []
+                epochs_by_label[label].append(epoch_data[i])
 
-            for label, epoch_list in label_to_epochs.items():
-                erp = np.mean(epoch_list, axis=0)  # shape: (n_channels, n_times)
-                erp = np.mean(erp, axis=0)
+            for label, epoch_list in epochs_by_label.items():
+                erp_trial_average = np.mean(epoch_list, axis=0)
+                erp = np.mean(erp_trial_average, axis=0)
                 data.append(
                     {"participant_id": participant_id, "label": label, "erp": erp}
                 )

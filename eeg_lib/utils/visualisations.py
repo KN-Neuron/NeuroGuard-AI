@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import matplotlib.patches as mpatches
-from typing import Optional, List, Tuple, Any
+from typing import Optional, List, Tuple, Any, Union
 from matplotlib.colors import Colormap
 from scipy.spatial.distance import cdist
 

@@ -1,27 +1,17 @@
-from sklearn.model_selection import train_test_split
-from eeg_lib.commons.constant import RESULTS_FOLDER
-
-from numpy import ndarray
-from pandas.core.arrays import ExtensionArray
-from sklearn.model_selection import train_test_split
-from eeg_lib.commons.constant import RESULTS_FOLDER
-
 import torch
-from torch.utils.tensorboard.writer import SummaryWriter
-from typing import Optional, Tuple, Union, Any
-from datetime import datetime
-import os
-import pandas as pd
-from torch.utils.tensorboard.writer import SummaryWriter
-from typing import Optional, Tuple, Any
-from datetime import datetime
-import os
 import numpy as np
 import pandas as pd
+from numpy import ndarray
 from scipy.spatial.distance import cdist
+from sklearn.model_selection import train_test_split
+from torch.utils.tensorboard.writer import SummaryWriter
+from typing import Optional, Tuple, Union, Any, Dict, List
+from datetime import datetime
+import os
+from eeg_lib.commons.constant import RESULTS_FOLDER
 
 
-def accuracy_fn(y_true: torch.Tensor, y_pred: torch.Tensor):
+def accuracy_fn(y_true: torch.Tensor, y_pred: torch.Tensor) -> float:
     """Calculates accuracy between truth labels and predictions.
 
     Args:
@@ -29,20 +19,20 @@ def accuracy_fn(y_true: torch.Tensor, y_pred: torch.Tensor):
         y_pred (torch.Tensor): Predictions to be compared to predictions.
 
     Returns:
-        [torch.float]: Accuracy value between y_true and y_pred, e.g. 78.45
+        float: Accuracy value between y_true and y_pred, e.g. 78.45
     """
     correct = torch.eq(y_true, y_pred).sum().item()
     acc = (correct / len(y_pred)) * 100
     return acc
 
 
-def print_train_time(start: float, end: float, device=None):
+def print_train_time(start: float, end: float, device: Optional[str] = None) -> float:
     """Prints difference between start and end time.
 
     Args:
         start (float): Start time of computation (preferred in timeit format).
         end (float): End time of computation.
-        device ([type], optional): Device that compute is running on. Defaults to None.
+        device (Optional[str], optional): Device that compute is running on. Defaults to None.
 
     Returns:
         float: time between start and end in seconds (higher is longer).
@@ -52,7 +42,7 @@ def print_train_time(start: float, end: float, device=None):
     return total_time
 
 
-def set_seeds(seed: int = 42):
+def set_seeds(seed: int = 42) -> None:
     """Sets random sets for torch operations.
 
     Args:
@@ -62,7 +52,7 @@ def set_seeds(seed: int = 42):
     torch.cuda.manual_seed(seed)
 
 
-def get_device():
+def get_device() -> str:
     """
     Determines the best available device for computation.
 
@@ -115,7 +105,7 @@ def create_writer(
         )
 
     print(f"[INFO] Created SummaryWriter, saving to: {log_dir}...")
-    return SummaryWriter(log_dir=log_dir)
+    return SummaryWriter(log_dir=log_dir)  # type: ignore[no-untyped-call]
 
 
 def split_train_test(
@@ -123,7 +113,8 @@ def split_train_test(
     test_size: float = 0.2,
     random_state: int = 0,
     ret_colors: bool = False,
-) -> tuple[Any, Any, Any, Any, Any, Any] | tuple[Any, Any, Any, Any]:
+) -> Union[Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]],
+           Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]]:
     """
     Splits an EEG DataFrame into training and testing sets based on unique participant IDs.
 
@@ -184,17 +175,17 @@ def split_train_test(
     print("Test labels:", np.unique(y_test))
 
     if ret_colors:
-        return X_train, X_test, y_train, y_test, colors_train, colors_test
+        return X_train, X_test, y_train, y_test, colors_train, colors_test  # type: ignore
 
     return X_train, X_test, y_train, y_test
 
 
 def compute_genuine_imposter_distances(
-    embeddings: np.ndarray,
-    ids: np.ndarray,
-    user_profiles: dict,
+    embeddings: np.ndarray[Any, Any],
+    ids: np.ndarray[Any, Any],
+    user_profiles: Dict[str, np.ndarray[Any, Any]],
     distance_metric: str = "euclidean",
-) -> (np.ndarray, np.ndarray):
+) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """
     Given embeddings and their user IDs, compute:
       - genuine_dists: distance(emb_i, profile[user_i])
@@ -235,11 +226,11 @@ def compute_genuine_imposter_distances(
 
 
 def compute_threshold_metrics(
-    genuine_dists: np.ndarray,
-    imposter_dists: np.ndarray,
+    genuine_dists: np.ndarray[Any, Any],
+    imposter_dists: np.ndarray[Any, Any],
     num_thresholds: int = 200,
     eps: float = 0.0001,
-) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, float, float, float):
+) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any], float, float, float, float]:
     """
     Given arrays of genuine/imposter distances, sweep a range of thresholds
     and compute FNR, FPR, and Accuracy. Also identify the threshold
@@ -311,8 +302,8 @@ def compute_threshold_metrics(
 
 
 def compute_f1_vs_threshold(
-    genuine_dists: np.ndarray, imposter_dists: np.ndarray, num_thresholds: int = 200
-) -> (np.ndarray, np.ndarray, float, float):
+    genuine_dists: np.ndarray[Any, Any], imposter_dists: np.ndarray[Any, Any], num_thresholds: int = 200
+) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], float, float]:
     """
     compute F1-score for a range of thresholds T:
       - "positive" = genuine pair  (label = 1)
@@ -366,8 +357,8 @@ def compute_f1_vs_threshold(
 
 
 def split_test_data_for_verification(
-    test_embeddings: np.ndarray, test_ids: np.ndarray, profile_ratio: float = 0.6
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    test_embeddings: np.ndarray[Any, Any], test_ids: np.ndarray[Any, Any], profile_ratio: float = 0.6
+) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """
     Split test data into profile creation and verification portions.
 
@@ -425,8 +416,8 @@ def split_test_data_for_verification(
 
 
 def create_user_profiles(
-    embeddings_2d: np.ndarray, participant_ids: np.ndarray
-) -> dict[str:[float]]:
+    embeddings_2d: np.ndarray[Any, Any], participant_ids: np.ndarray[Any, Any]
+) -> Dict[str, np.ndarray[Any, Any]]:
     """
     Create a dictionary of user profiles from 2D embeddings and participant IDs.
 
@@ -453,7 +444,7 @@ def create_user_profiles(
     return user_profiles
 
 
-def predict_ids(embeddings_2d: np.ndarray, user_profiles: dict) -> list:
+def predict_ids(embeddings_2d: np.ndarray[Any, Any], user_profiles: Dict[str, np.ndarray[Any, Any]]) -> List[str]:
     """
     Predict the participant IDs of EEG data points given their embeddings and a dictionary of user profiles.
 

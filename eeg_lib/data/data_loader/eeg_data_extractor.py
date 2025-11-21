@@ -55,7 +55,8 @@ class EEGDataExtractor:
             eeg = mne.io.read_raw_fif(file_path, preload=True)
             eeg.pick_types(eeg=True, stim=False, eog=False, exclude="bads")
 
-            eeg.apply_function(lambda x: x * 10**-6)
+            microvolts_to_millivolts_conversion_factor = 10**-6
+            eeg.apply_function(lambda x: x * microvolts_to_millivolts_conversion_factor)
             eeg.filter(l_freq=self.lfreq, h_freq=self.hfreq)
             eeg.notch_filter(self.notch_filter)
             if getattr(eeg, "annotations", None) is not None:

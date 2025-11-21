@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import nn
-from typing import Callable, Union
-from dataclasses import dataclass
 from torch.utils.data import DataLoader
-from typing import Any, Callable, Union
+from typing import Callable, Union, Any
+from dataclasses import dataclass
 
 
 @dataclass
@@ -47,12 +46,12 @@ def train_triplet_epoch(
 
 def train_triplet(
     model: nn.Module,
-    train_loader: torch.utils.data.dataloader,
-    criterion: Callable,
-    optimizer: torch.optim,
+    train_loader: DataLoader[Any],
+    criterion: Callable[..., torch.Tensor],
+    optimizer: torch.optim.Optimizer,
     device: torch.device,
     n_epochs: int = 10,
-):
+) -> None:
     for epoch in range(1, n_epochs + 1):
         loss = train_triplet_epoch(model, train_loader, criterion, optimizer, device)
         print(f"Epoch {epoch}/{n_epochs} | Triplet Loss: {loss:.4f}")
@@ -162,9 +161,9 @@ def train_triplet_epoch_online(
 
 def train_triplet_online(
     model: nn.Module,
-    train_loader: torch.utils.data.dataloader,
-    criterion: Callable,
-    optimizer: torch.optim,
+    train_loader: DataLoader[Any],
+    criterion: Callable[..., torch.Tensor],
+    optimizer: torch.optim.Optimizer,
     device: torch.device,
     n_epochs: int = 10,
 ) -> float:

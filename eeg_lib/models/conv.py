@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Union
 
 
 class EEGEmbedder(nn.Module):
-    def __init__(self, embedding_dim=128):
+    def __init__(self, embedding_dim: int = 128):
         super(EEGEmbedder, self).__init__()
 
         self.cnn = nn.Sequential(
@@ -36,7 +37,7 @@ class EEGEmbedder(nn.Module):
             nn.Tanh(),  # or ReLU, depending on use
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, 4, 751)
         x = x.unsqueeze(1)  # -> (B, 1, 4, 751)
         x = self.cnn(x)
