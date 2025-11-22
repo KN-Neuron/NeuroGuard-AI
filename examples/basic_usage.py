@@ -7,11 +7,11 @@ including loading data, using models, and training.
 
 import torch
 import numpy as np
-from eeg_lib.models import EEGNetEmbeddingModel
-from eeg_lib.losses import TripletLoss
-from eeg_lib.datastructures import EEGData, ModelConfig, TrainingConfig
-from eeg_lib.data import EEGNetColorDataset
-from eeg_lib.commons import eeg_config
+from neuroguard.models import EEGNetEmbeddingModel
+from neuroguard.losses import TripletLoss
+from neuroguard.datastructures import EEGData, ModelConfig, TrainingConfig
+from neuroguard.data import EEGNetColorDataset
+from neuroguard.commons import eeg_config
 
 
 def create_sample_data():

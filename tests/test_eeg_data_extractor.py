@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 import pandas as pd
 
-from eeg_lib.data.EEGDataExtractor import EEGDataExtractor
+from neuroguard.data.EEGDataExtractor import EEGDataExtractor
 
 
 class TestEEGDataExtractor(unittest.TestCase):

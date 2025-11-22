@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "eeg_lib"
+name = "neuroguard"
 version = "0.0.1"
 description = "EEG verification lib"
 authors = ["AI Team"]
 readme = "README.md"
 license = ""
-packages = [{include = "eeg_lib"}]
+packages = [{include = "neuroguard"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -75,7 +75,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.pyright]
-include = ["eeg_lib"]
+include = ["neuroguard"]
 exclude = [
     "**/node_modules",
     "**/__pycache__",

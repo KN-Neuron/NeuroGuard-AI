@@ -33,7 +33,7 @@ np.savez('sample_data.npz', X=X, y=y)
 Then train a model:
 
 ```bash
-python -m eeg_lib train \
+python -m neuroguard train \
   --model eegnet \
   --batch_size 32 \
   --lr 0.001 \
@@ -48,7 +48,7 @@ python -m eeg_lib train \
 ### Training a Model
 
 ```bash
-python -m eeg_lib train \
+python -m neuroguard train \
   --model eegnet \
   --batch_size 32 \
   --lr 0.001 \
@@ -61,7 +61,7 @@ python -m eeg_lib train \
 ### Visualizing Embeddings
 
 ```bash
-python -m eeg_lib visualize \
+python -m neuroguard visualize \
   --model_path ./models/eegnet_final.pth \
   --method tsne \
   --data_path ./data/test.npz \
@@ -71,7 +71,7 @@ python -m eeg_lib visualize \
 ### Evaluating a Model
 
 ```bash
-python -m eeg_lib evaluate \
+python -m neuroguard evaluate \
   --model_path ./models/eegnet_final.pth \
   --test_data ./data/test.npz \
   --metrics accuracy f1 precision recall confusion_matrix \
@@ -83,7 +83,7 @@ python -m eeg_lib evaluate \
 ### Training Command
 
 ```bash
-python -m eeg_lib train [OPTIONS]
+python -m neuroguard train [OPTIONS]
 ```
 
 - `--model`: Model architecture (eegnet, eegembedder) [default: eegnet]
@@ -99,7 +99,7 @@ python -m eeg_lib train [OPTIONS]
 ### Visualization Command
 
 ```bash
-python -m eeg_lib visualize [OPTIONS]
+python -m neuroguard visualize [OPTIONS]
 ```
 
 - `--model_path`: Path to trained model (required)
@@ -112,7 +112,7 @@ python -m eeg_lib visualize [OPTIONS]
 ### Evaluation Command
 
 ```bash
-python -m eeg_lib evaluate [OPTIONS]
+python -m neuroguard evaluate [OPTIONS]
 ```
 
 - `--model_path`: Path to trained model (required)
@@ -128,11 +128,13 @@ python -m eeg_lib evaluate [OPTIONS]
 The library supports multiple data formats:
 
 ### Standard Formats
+
 - **NumPy (.npz)**: With 'X' and 'y' keys for data and labels
 - **PyTorch (.pt/.pth)**: With 'X' and 'y' keys for data and labels
 - **CSV (.csv/.tsv)**: With optional 'label' column or last column as labels
 
 ### EEG-Specific Formats
+
 - **FIF (.fif)**: MNE-compatible format with events for labels
 - **EDF (.edf)**: European Data Format with events for labels
 - **Directory**: FIF/EDF files in a directory, with labels extracted from filenames
@@ -140,6 +142,7 @@ The library supports multiple data formats:
 #### Examples
 
 **NumPy format:**
+
 ```python
 import numpy as np
 # Save as .npz
@@ -147,6 +150,7 @@ np.savez('data.npz', X=X_data, y=y_labels)
 ```
 
 **PyTorch format:**
+
 ```python
 import torch
 # Save as .pt
@@ -154,15 +158,17 @@ torch.save({'X': X_data, 'y': y_labels}, 'data.pt')
 ```
 
 **FIF format:**
+
 ```bash
 # Use directory containing FIF files
-python -m eeg_lib train --data_path ./eeg_data/fif_files/
+python -m neuroguard train --data_path ./eeg_data/fif_files/
 
 # Or single FIF file
-python -m eeg_lib train --data_path ./eeg_data/subject_01_raw.fif
+python -m neuroguard train --data_path ./eeg_data/subject_01_raw.fif
 ```
 
 **CSV format:**
+
 ```python
 import pandas as pd
 df = pd.DataFrame({
@@ -183,6 +189,7 @@ df.to_csv('eeg_data.csv', index=False)
 ## Examples
 
 See the `examples/` directory for complete usage examples, including:
+
 - `train_example.py` - Example script to train a model programmatically
 - `QUICKSTART.md` - Detailed quick start guide
 

@@ -2,19 +2,19 @@
 Simple test to verify the library structure
 """
 try:
-    from eeg_lib import __version__
+    from neuroguard import __version__
     print(f"EEG Library version: {__version__}")
     
-    from eeg_lib.training.trainer import EEGTrainer
+    from neuroguard.training.trainer import EEGTrainer
     print("✓ Training module imported successfully")
     
-    from eeg_lib.visualization.visualizer import EEGVisualizer  
+    from neuroguard.visualization.visualizer import EEGVisualizer  
     print("✓ Visualization module imported successfully")
     
-    from eeg_lib.evaluation.evaluator import EEGEvaluator
+    from neuroguard.evaluation.evaluator import EEGEvaluator
     print("✓ Evaluation module imported successfully")
     
-    from eeg_lib.cli import create_parser
+    from neuroguard.cli import create_parser
     parser = create_parser()
     print("✓ CLI parser created successfully")
     

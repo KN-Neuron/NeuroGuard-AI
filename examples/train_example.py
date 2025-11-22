@@ -3,7 +3,7 @@ Example script for training an EEG model
 """
 import numpy as np
 import os
-from eeg_lib.training.trainer import EEGTrainer
+from neuroguard.training.trainer import EEGTrainer
 
 # Create sample data
 X = np.random.randn(200, 4, 751)  # 200 samples, 4 channels, 751 time points (EEGNet typical input)

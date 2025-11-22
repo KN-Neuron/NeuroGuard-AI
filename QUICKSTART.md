@@ -30,7 +30,7 @@ np.savez('sample_data.npz', X=X, y=y)
 Train an EEG model with default parameters:
 
 ```bash
-python -m eeg_lib train \
+python -m neuroguard train \
   --model eegnet \
   --data_path ./sample_data.npz \
   --model_save_path ./models/
@@ -39,7 +39,7 @@ python -m eeg_lib train \
 For more control over training parameters:
 
 ```bash
-python -m eeg_lib train \
+python -m neuroguard train \
   --model eegnet \
   --batch_size 16 \
   --lr 0.0001 \
@@ -54,7 +54,7 @@ python -m eeg_lib train \
 Visualize embeddings from a trained model:
 
 ```bash
-python -m eeg_lib visualize \
+python -m neuroguard visualize \
   --model_path ./models/eegnet_final.pth \
   --data_path ./sample_data.npz \
   --method tsne \
@@ -62,6 +62,7 @@ python -m eeg_lib visualize \
 ```
 
 Supported visualization methods:
+
 - `tsne`: t-distributed Stochastic Neighbor Embedding
 - `umap`: Uniform Manifold Approximation and Projection
 - `pca`: Principal Component Analysis
@@ -72,7 +73,7 @@ Supported visualization methods:
 Evaluate a trained model:
 
 ```bash
-python -m eeg_lib evaluate \
+python -m neuroguard evaluate \
   --model_path ./models/eegnet_final.pth \
   --test_data ./sample_data.npz \
   --metrics accuracy f1 precision recall confusion_matrix \
@@ -84,7 +85,9 @@ python -m eeg_lib evaluate \
 The library supports multiple formats for EEG data:
 
 ### Standard Formats
+
 - **NumPy format (.npz):**
+
 ```python
 import numpy as np
 # Input data with shape (n_samples, n_channels, n_time_points)
@@ -97,6 +100,7 @@ np.savez('data.npz', **data)
 ```
 
 - **PyTorch format (.pt/.pth):**
+
 ```python
 import torch
 # Input data with shape (n_samples, n_channels, n_time_points)
@@ -109,25 +113,29 @@ torch.save(data, 'data.pt')
 ```
 
 ### EEG-Specific Formats
+
 - **FIF format:**
+
 ```bash
 # Training with a directory of FIF files
-python -m eeg_lib train --data_path ./eeg_data/Kolory/
+python -m neuroguard train --data_path ./eeg_data/Kolory/
 
 # Training with a single FIF file
-python -m eeg_lib train --data_path ./eeg_data/subject_01_raw.fif
+python -m neuroguard train --data_path ./eeg_data/subject_01_raw.fif
 
 # Visualization with FIF files
-python -m eeg_lib visualize --data_path ./eeg_data/test_subjects/ --method tsne
+python -m neuroguard visualize --data_path ./eeg_data/test_subjects/ --method tsne
 ```
 
 - **EDF format:**
+
 ```bash
 # Same usage as FIF files
-python -m eeg_lib train --data_path ./eeg_data/eeg_data.edf
+python -m neuroguard train --data_path ./eeg_data/eeg_data.edf
 ```
 
 - **CSV format:**
+
 ```python
 import pandas as pd
 # Create EEG dataset with multiple channels
@@ -148,6 +156,7 @@ The library automatically saves model checkpoints during training based on the `
 ## Model Saving
 
 Models are saved in PyTorch format with the following structure:
+
 - Final model: `{model_name}_final.pth`
 - Checkpoints: `checkpoint_epoch_{N}.pth`
 - Training history: `training_history.json`
