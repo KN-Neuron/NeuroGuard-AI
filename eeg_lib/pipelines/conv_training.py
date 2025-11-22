@@ -27,6 +27,7 @@ def train_triplet_epoch(
 
     for batch in dataloader:
         anchor, positive, negative = (x.to(device) for x in batch[:3])
+        anchor, positive, negative = (x.to(device) for x in batch[:3])
 
         emb_anchor = model(anchor)
         emb_positive = model(positive)
@@ -44,14 +45,7 @@ def train_triplet_epoch(
     return avg_loss
 
 
-def train_triplet(
-    model: nn.Module,
-    train_loader: DataLoader[Any],
-    criterion: Callable[..., torch.Tensor],
-    optimizer: torch.optim.Optimizer,
-    device: torch.device,
-    n_epochs: int = 10,
-) -> None:
+def train_triplet(model: nn.Module, train_loader: torch.utils.data.dataloader, criterion: Callable, optimizer: torch.optim, device: torch.device, n_epochs:int=10):
     for epoch in range(1, n_epochs + 1):
         loss = train_triplet_epoch(model, train_loader, criterion, optimizer, device)
         print(f"Epoch {epoch}/{n_epochs} | Triplet Loss: {loss:.4f}")
@@ -104,7 +98,9 @@ def train_triplet_epoch_online(
         optimizer.zero_grad()
 
         embeddings = model(inputs)
+        embeddings = model(inputs)
 
+        distances = pairwise_distances(embeddings)
         distances = pairwise_distances(embeddings)
 
         batch_size = labels.size(0)
@@ -129,6 +125,7 @@ def train_triplet_epoch_online(
             )
 
             neg_distances = anchor_dist.clone()
+            neg_distances[~negative_mask] = 1e6
             neg_distances[~negative_mask] = 1e6
 
             hardest_negative_dist, hardest_negative_idx = torch.min(
