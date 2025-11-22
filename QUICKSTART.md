@@ -4,7 +4,7 @@ This guide will help you get started with the EEG Library for training, visualiz
 
 ## Installation
 
-First, install the library:
+First, install the NeuroGuard library:
 
 ```bash
 pip install -e .

@@ -193,6 +193,248 @@ See the `examples/` directory for complete usage examples, including:
 - `train_example.py` - Example script to train a model programmatically
 - `QUICKSTART.md` - Detailed quick start guide
 
+## Installation
+
+### Prerequisites
+- Python 3.12 or higher
+- pip package manager
+
+### Installing from Source
+
+1. **Clone or download the repository:**
+```bash
+git clone https://github.com/your-username/NeuroGuard-AI.git
+cd NeuroGuard-AI
+```
+
+2. **Install in development mode:**
+```bash
+pip install -e .
+```
+
+3. **Install with specific dependencies (optional):**
+```bash
+pip install -e .[dev]  # Includes development dependencies
+```
+
+### Installing in Your Own Project
+
+You can install NeuroGuard as a dependency in your own project using several methods:
+
+#### Method 1: Direct pip install from GitHub
+```bash
+pip install git+https://github.com/your-username/NeuroGuard-AI.git
+```
+
+#### Method 2: Add to your requirements.txt
+```txt
+git+https://github.com/your-username/NeuroGuard-AI.git
+```
+
+#### Method 3: Copy as a submodule
+```bash
+git submodule add https://github.com/your-username/NeuroGuard-AI.git
+pip install -e ./NeuroGuard-AI
+```
+
+## Usage as a Library
+
+### 1. Using the Command Line Interface (CLI)
+
+The NeuroGuard library provides a complete command-line interface for EEG processing tasks:
+
+#### Training Models
+```bash
+# Train with FIF files directory
+python -m neuroguard train \
+  --model eegnet \
+  --batch_size 32 \
+  --lr 0.001 \
+  --num_epochs 10 \
+  --data_path ./eeg_data/fif_files/ \
+  --model_save_path ./models/ \
+  --checkpoint_freq 5
+
+# Train with numpy data
+python -m neuroguard train \
+  --model eegnet \
+  --data_path ./data/train.npz \
+  --model_save_path ./models/
+```
+
+#### Visualization
+```bash
+# Visualize embeddings from trained model
+python -m neuroguard visualize \
+  --model_path ./models/eegnet_final.pth \
+  --data_path ./data/test.npz \
+  --method tsne \
+  --save_path ./plots/
+
+# Visualize from FIF files
+python -m neuroguard visualize \
+  --model_path ./models/eegnet_final.pth \
+  --data_path ./eeg_data/test_subjects/ \
+  --method umap \
+  --save_path ./plots/
+```
+
+#### Evaluation
+```bash
+# Evaluate model performance
+python -m neuroguard evaluate \
+  --model_path ./models/eegnet_final.pth \
+  --test_data ./data/test.npz \
+  --metrics accuracy f1 precision recall confusion_matrix \
+  --save_results ./results/
+```
+
+### 2. Using Programmatically in Python
+
+#### Training Programmatically
+```python
+from neuroguard.training.trainer import EEGTrainer
+
+# Create and configure trainer
+trainer = EEGTrainer(
+    model_name='eegnet',
+    batch_size=32,
+    learning_rate=0.001,
+    num_epochs=20,
+    checkpoint_freq=5,
+    device='cuda' if torch.cuda.is_available() else 'cpu'
+)
+
+# Train the model with FIF files
+trainer.train(
+    data_path='./eeg_data/fif_files/',
+    save_path='./models/my_experiment/'
+)
+```
+
+#### Visualization Programmatically
+```python
+from neuroguard.visualization.visualizer import EEGVisualizer
+
+# Create visualizer
+visualizer = EEGVisualizer(
+    model_path='./models/eegnet_final.pth',
+    device='cuda' if torch.cuda.is_available() else 'cpu'
+)
+
+# Generate visualization from FIF directory
+plot_path = visualizer.generate_visualization(
+    data_path='./eeg_data/fif_files/',
+    method='tsne',
+    save_path='./plots/my_visualization/'
+)
+```
+
+#### Evaluation Programmatically
+```python
+from neuroguard.evaluation.evaluator import EEGEvaluator
+
+# Create evaluator
+evaluator = EEGEvaluator(
+    model_path='./models/eegnet_final.pth',
+    batch_size=32,
+    device='cuda' if torch.cuda.is_available() else 'cpu'
+)
+
+# Evaluate with multiple metrics
+results = evaluator.evaluate(
+    test_data_path='./eeg_data/fif_files/',
+    metrics=['accuracy', 'f1', 'precision', 'recall', 'confusion_matrix']
+)
+
+# Save results
+evaluator.save_results(results, './results/my_evaluation/')
+```
+
+### 3. Data Format Support
+
+NeuroGuard supports multiple EEG data formats:
+
+#### FIF Files (Recommended for EEG data)
+```python
+# Directory with multiple FIF files
+data_path = './eeg_data/subjects/'  # Multiple .fif files
+
+# Single FIF file
+data_path = './eeg_data/subject_01_raw.fif'
+```
+
+#### NumPy Format
+```python
+import numpy as np
+
+# Save as .npz with 'X' and 'y' keys
+data = {
+    'X': np.random.randn(100, 4, 751),  # (samples, channels, time_points)
+    'y': np.random.randint(0, 4, size=100)  # labels
+}
+np.savez('data.npz', **data)
+```
+
+#### CSV Format
+```python
+import pandas as pd
+
+# CSV with channel columns and label column
+df = pd.DataFrame({
+    'ch1': [...],     # First EEG channel values
+    'ch2': [...],     # Second EEG channel values
+    'ch3': [...],     # Third EEG channel values
+    'ch4': [...],     # Fourth EEG channel values
+    'label': [...]    # Classification labels
+})
+df.to_csv('eeg_data.csv', index=False)
+```
+
+### 4. Model Architectures
+
+#### EEGNet Model
+- Optimized for motor imagery and P300 classification
+- Efficient for limited EEG data
+- Default choice for most EEG tasks
+
+#### EEGEmbedder Model
+- Custom embedding model for similarity tasks
+- Good for verification and matching applications
+
+## Examples
+
+### Complete Pipeline Example
+```python
+import numpy as np
+from neuroguard.training.trainer import EEGTrainer
+from neuroguard.visualization.visualizer import EEGVisualizer
+from neuroguard.evaluation.evaluator import EEGEvaluator
+
+# Step 1: Train model with FIF data
+trainer = EEGTrainer(model_name='eegnet', batch_size=32, num_epochs=10)
+trainer.train(
+    data_path='./eeg_data/fif_files/',
+    save_path='./models/exp1/'
+)
+
+# Step 2: Visualize embeddings
+visualizer = EEGVisualizer(model_path='./models/exp1/eegnet_final.pth')
+visualizer.generate_visualization(
+    data_path='./eeg_data/fif_files/',
+    method='tsne',
+    save_path='./plots/exp1/'
+)
+
+# Step 3: Evaluate model
+evaluator = EEGEvaluator(model_path='./models/exp1/eegnet_final.pth')
+results = evaluator.evaluate(
+    test_data_path='./eeg_data/fif_files/',
+    metrics=['accuracy', 'f1', 'confusion_matrix']
+)
+evaluator.save_results(results, './results/exp1/')
+```
+
 ## License
 
 MIT
