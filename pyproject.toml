@@ -1,15 +1,16 @@
 [tool.poetry]
-name = "eeg_lib"
+name = "neuroguard"
 version = "0.0.1"
 description = "EEG verification lib"
 authors = ["AI Team"]
 readme = "README.md"
 license = ""
-packages = [{include = "eeg_lib"}]
+packages = [{include = "neuroguard"}]
 
 [tool.poetry.dependencies]
-python = "3.12.7"
-torch = "2.6.0"
+python = "^3.12"
+torch = "^2.6.0"
+torchvision = "^0.21.0"  # Compatible with torch 2.6.x
 numpy = "1.26.4"
 pandas = "2.2.3"
 tqdm = "4.67.1"
@@ -18,9 +19,7 @@ triton = { version = "3.2.0", optional = true }
 pyright = "^1.1.395"
 scikit-learn = "^1.7.2"
 umap = "^0.1.1"
-torchvision="0.24.1"
 tensorboard = "2.19.0"
-umap = "^0.1.1"
 umap-learn = "^0.5.7"
 
 [tool.poetry.extras]
@@ -76,7 +75,7 @@ module = [
 ignore_missing_imports = true
 
 [tool.pyright]
-include = ["eeg_lib"]
+include = ["neuroguard"]
 exclude = [
     "**/node_modules",
     "**/__pycache__",

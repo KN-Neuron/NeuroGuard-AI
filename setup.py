@@ -1,22 +1,19 @@
 from setuptools import setup, find_packages
 
-with open("eeg_lib/README.md", "r", encoding="utf-8") as fh:
+with open("neuroguard/README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="eeg_lib",
+    name="neuroguard",
     version="0.0.1",
     author="KN Neuron - AI Team",
-    # author_email="your_email@example.com",
     description="A library for EEG-based AI pipelines and models",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    # url="https://github.com/your_username/eeg_lib",
-    packages=find_packages(include=["eeg_lib", "eeg_lib.*"]),
+    packages=find_packages(include=["neuroguard", "neuroguard.*"]),
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",
-        # "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
@@ -31,13 +28,15 @@ setup(
         "matplotlib",
         "pandas",
         "mne",
+        "umap-learn>=0.5.0",
+        "seaborn>=0.11.0",
     ],
     extras_require={
         "dev": ["pytest", "black", "flake8"],
     },
     entry_points={
         "console_scripts": [
-            "eeg_lib=eeg_lib.__main__:main",
+            "neuroguard=neuroguard.__main__:main",
         ],
     },
     license="MIT",
