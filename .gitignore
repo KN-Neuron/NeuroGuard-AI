@@ -197,6 +197,8 @@ notebooks/eeg_extractor_grid_search_v3.json
 .idea
 *.fif
 
+DS_Store
+
 result_summaries
 result_summaries/
 /result_summaries/
