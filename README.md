@@ -1,93 +1,440 @@
-# Data Acquisition Framework
+# EEG Library
 
+EEG Library is a comprehensive Python package for EEG embedding generation, model training, and evaluation. It provides a command-line interface for easy model training, visualization, and evaluation of EEG data.
 
+## Features
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/kn-neuron/neuroguard/data-acquisition-framework.git
-git branch -M main
-git push -uf origin main
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.com/kn-neuron/neuroguard/data-acquisition-framework/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+- **Model Training**: Train various EEG models with configurable parameters
+- **Embedding Generation**: Create high-quality EEG embeddings for various applications
+- **Visualization**: Generate t-SNE, UMAP, PCA, and LDA visualizations of embeddings
+- **Model Evaluation**: Comprehensive evaluation metrics including accuracy, F1, precision, recall, and confusion matrices
+- **Checkpointing**: Automatic model checkpointing during training
+- **CLI Interface**: Easy-to-use command-line interface for all operations
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+
+```bash
+pip install -e .
+```
+
+## Quick Start
+
+First, prepare your EEG data in .npz format with 'X' as input and 'y' as labels:
+
+```python
+import numpy as np
+
+# Example: Create sample data
+X = np.random.randn(100, 4, 751)  # 100 samples, 4 channels, 751 time points
+y = np.random.randint(0, 4, size=100)  # 4 classes
+np.savez('sample_data.npz', X=X, y=y)
+```
+
+Then train a model:
+
+```bash
+python -m neuroguard train \
+  --model eegnet \
+  --batch_size 32 \
+  --lr 0.001 \
+  --num_epochs 10 \
+  --data_path ./sample_data.npz \
+  --model_save_path ./models/ \
+  --checkpoint_freq 5
+```
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### Training a Model
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+```bash
+python -m neuroguard train \
+  --model eegnet \
+  --batch_size 32 \
+  --lr 0.001 \
+  --num_epochs 10 \
+  --data_path ./data/train.npz \
+  --model_save_path ./models/ \
+  --checkpoint_freq 5
+```
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+### Visualizing Embeddings
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```bash
+python -m neuroguard visualize \
+  --model_path ./models/eegnet_final.pth \
+  --method tsne \
+  --data_path ./data/test.npz \
+  --save_path ./plots/
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+### Evaluating a Model
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+```bash
+python -m neuroguard evaluate \
+  --model_path ./models/eegnet_final.pth \
+  --test_data ./data/test.npz \
+  --metrics accuracy f1 precision recall confusion_matrix \
+  --save_results ./results/
+```
+
+## Command Line Interface
+
+### Training Command
+
+```bash
+python -m neuroguard train [OPTIONS]
+```
+
+- `--model`: Model architecture (eegnet, eegembedder) [default: eegnet]
+- `--batch_size`: Batch size for training [default: 32]
+- `--lr`: Learning rate [default: 0.001]
+- `--num_epochs`: Number of epochs to train [default: 10]
+- `--data_path`: Path to training data (required)
+- `--model_save_path`: Path to save the trained model [default: ./models/]
+- `--checkpoint_freq`: Save checkpoint every N epochs [default: 5]
+- `--device`: Device to train on [default: cuda if available, else cpu]
+- `--log_level`: Logging level [default: INFO]
+
+### Visualization Command
+
+```bash
+python -m neuroguard visualize [OPTIONS]
+```
+
+- `--model_path`: Path to trained model (required)
+- `--method`: Visualization method (tsne, umap, pca, lda) [default: tsne]
+- `--data_path`: Path to data for visualization (required)
+- `--save_path`: Path to save visualization plots [default: ./plots/]
+- `--device`: Device to run inference on [default: cuda if available, else cpu]
+- `--log_level`: Logging level [default: INFO]
+
+### Evaluation Command
+
+```bash
+python -m neuroguard evaluate [OPTIONS]
+```
+
+- `--model_path`: Path to trained model (required)
+- `--test_data`: Path to test data (required)
+- `--batch_size`: Batch size for evaluation [default: 32]
+- `--device`: Device to run evaluation on [default: cuda if available, else cpu]
+- `--metrics`: Metrics to compute (accuracy, f1, precision, recall, confusion_matrix) [default: accuracy]
+- `--save_results`: Path to save evaluation results [default: ./results/]
+- `--log_level`: Logging level [default: INFO]
+
+## Data Format
+
+The library supports multiple data formats:
+
+### Standard Formats
+
+- **NumPy (.npz)**: With 'X' and 'y' keys for data and labels
+- **PyTorch (.pt/.pth)**: With 'X' and 'y' keys for data and labels
+- **CSV (.csv/.tsv)**: With optional 'label' column or last column as labels
+
+### EEG-Specific Formats
+
+- **FIF (.fif)**: MNE-compatible format with events for labels
+- **EDF (.edf)**: European Data Format with events for labels
+- **Directory**: FIF/EDF files in a directory, with labels extracted from filenames
+
+#### Examples
+
+**NumPy format:**
+
+```python
+import numpy as np
+# Save as .npz
+np.savez('data.npz', X=X_data, y=y_labels)
+```
+
+**PyTorch format:**
+
+```python
+import torch
+# Save as .pt
+torch.save({'X': X_data, 'y': y_labels}, 'data.pt')
+```
+
+**FIF format:**
+
+```bash
+# Use directory containing FIF files
+python -m neuroguard train --data_path ./eeg_data/fif_files/
+
+# Or single FIF file
+python -m neuroguard train --data_path ./eeg_data/subject_01_raw.fif
+```
+
+**CSV format:**
+
+```python
+import pandas as pd
+df = pd.DataFrame({
+    'channel1': [...],  # EEG channel data
+    'channel2': [...],
+    'channel3': [...],
+    'channel4': [...],
+    'label': [...]      # Classification labels
+})
+df.to_csv('eeg_data.csv', index=False)
+```
+
+## Supported Models
+
+- **EEGNet**: A convolutional neural network specifically designed for EEG data
+- **EEGEmbedder**: A custom embedding model for generating EEG embeddings
+
+## Examples
+
+See the `examples/` directory for complete usage examples, including:
+
+- `train_example.py` - Example script to train a model programmatically
+- `QUICKSTART.md` - Detailed quick start guide
+
+## Installation
+
+### Prerequisites
+- Python 3.12 or higher
+- pip package manager
+
+### Installing from Source
+
+1. **Clone or download the repository:**
+```bash
+git clone https://github.com/your-username/NeuroGuard-AI.git
+cd NeuroGuard-AI
+```
+
+2. **Install in development mode:**
+```bash
+pip install -e .
+```
+
+3. **Install with specific dependencies (optional):**
+```bash
+pip install -e .[dev]  # Includes development dependencies
+```
+
+### Installing in Your Own Project
+
+You can install NeuroGuard as a dependency in your own project using several methods:
+
+#### Method 1: Direct pip install from GitHub
+```bash
+pip install git+https://github.com/your-username/NeuroGuard-AI.git
+```
+
+#### Method 2: Add to your requirements.txt
+```txt
+git+https://github.com/your-username/NeuroGuard-AI.git
+```
+
+#### Method 3: Copy as a submodule
+```bash
+git submodule add https://github.com/your-username/NeuroGuard-AI.git
+pip install -e ./NeuroGuard-AI
+```
+
+## Usage as a Library
+
+### 1. Using the Command Line Interface (CLI)
+
+The NeuroGuard library provides a complete command-line interface for EEG processing tasks:
+
+#### Training Models
+```bash
+# Train with FIF files directory
+python -m neuroguard train \
+  --model eegnet \
+  --batch_size 32 \
+  --lr 0.001 \
+  --num_epochs 10 \
+  --data_path ./eeg_data/fif_files/ \
+  --model_save_path ./models/ \
+  --checkpoint_freq 5
+
+# Train with numpy data
+python -m neuroguard train \
+  --model eegnet \
+  --data_path ./data/train.npz \
+  --model_save_path ./models/
+```
+
+#### Visualization
+```bash
+# Visualize embeddings from trained model
+python -m neuroguard visualize \
+  --model_path ./models/eegnet_final.pth \
+  --data_path ./data/test.npz \
+  --method tsne \
+  --save_path ./plots/
+
+# Visualize from FIF files
+python -m neuroguard visualize \
+  --model_path ./models/eegnet_final.pth \
+  --data_path ./eeg_data/test_subjects/ \
+  --method umap \
+  --save_path ./plots/
+```
+
+#### Evaluation
+```bash
+# Evaluate model performance
+python -m neuroguard evaluate \
+  --model_path ./models/eegnet_final.pth \
+  --test_data ./data/test.npz \
+  --metrics accuracy f1 precision recall confusion_matrix \
+  --save_results ./results/
+```
+
+### 2. Using Programmatically in Python
+
+#### Training Programmatically
+```python
+from neuroguard.training.trainer import EEGTrainer
+
+# Create and configure trainer
+trainer = EEGTrainer(
+    model_name='eegnet',
+    batch_size=32,
+    learning_rate=0.001,
+    num_epochs=20,
+    checkpoint_freq=5,
+    device='cuda' if torch.cuda.is_available() else 'cpu'
+)
+
+# Train the model with FIF files
+trainer.train(
+    data_path='./eeg_data/fif_files/',
+    save_path='./models/my_experiment/'
+)
+```
+
+#### Visualization Programmatically
+```python
+from neuroguard.visualization.visualizer import EEGVisualizer
+
+# Create visualizer
+visualizer = EEGVisualizer(
+    model_path='./models/eegnet_final.pth',
+    device='cuda' if torch.cuda.is_available() else 'cpu'
+)
+
+# Generate visualization from FIF directory
+plot_path = visualizer.generate_visualization(
+    data_path='./eeg_data/fif_files/',
+    method='tsne',
+    save_path='./plots/my_visualization/'
+)
+```
+
+#### Evaluation Programmatically
+```python
+from neuroguard.evaluation.evaluator import EEGEvaluator
+
+# Create evaluator
+evaluator = EEGEvaluator(
+    model_path='./models/eegnet_final.pth',
+    batch_size=32,
+    device='cuda' if torch.cuda.is_available() else 'cpu'
+)
+
+# Evaluate with multiple metrics
+results = evaluator.evaluate(
+    test_data_path='./eeg_data/fif_files/',
+    metrics=['accuracy', 'f1', 'precision', 'recall', 'confusion_matrix']
+)
+
+# Save results
+evaluator.save_results(results, './results/my_evaluation/')
+```
+
+### 3. Data Format Support
+
+NeuroGuard supports multiple EEG data formats:
+
+#### FIF Files (Recommended for EEG data)
+```python
+# Directory with multiple FIF files
+data_path = './eeg_data/subjects/'  # Multiple .fif files
+
+# Single FIF file
+data_path = './eeg_data/subject_01_raw.fif'
+```
+
+#### NumPy Format
+```python
+import numpy as np
+
+# Save as .npz with 'X' and 'y' keys
+data = {
+    'X': np.random.randn(100, 4, 751),  # (samples, channels, time_points)
+    'y': np.random.randint(0, 4, size=100)  # labels
+}
+np.savez('data.npz', **data)
+```
+
+#### CSV Format
+```python
+import pandas as pd
+
+# CSV with channel columns and label column
+df = pd.DataFrame({
+    'ch1': [...],     # First EEG channel values
+    'ch2': [...],     # Second EEG channel values
+    'ch3': [...],     # Third EEG channel values
+    'ch4': [...],     # Fourth EEG channel values
+    'label': [...]    # Classification labels
+})
+df.to_csv('eeg_data.csv', index=False)
+```
+
+### 4. Model Architectures
+
+#### EEGNet Model
+- Optimized for motor imagery and P300 classification
+- Efficient for limited EEG data
+- Default choice for most EEG tasks
+
+#### EEGEmbedder Model
+- Custom embedding model for similarity tasks
+- Good for verification and matching applications
+
+## Examples
+
+### Complete Pipeline Example
+```python
+import numpy as np
+from neuroguard.training.trainer import EEGTrainer
+from neuroguard.visualization.visualizer import EEGVisualizer
+from neuroguard.evaluation.evaluator import EEGEvaluator
+
+# Step 1: Train model with FIF data
+trainer = EEGTrainer(model_name='eegnet', batch_size=32, num_epochs=10)
+trainer.train(
+    data_path='./eeg_data/fif_files/',
+    save_path='./models/exp1/'
+)
+
+# Step 2: Visualize embeddings
+visualizer = EEGVisualizer(model_path='./models/exp1/eegnet_final.pth')
+visualizer.generate_visualization(
+    data_path='./eeg_data/fif_files/',
+    method='tsne',
+    save_path='./plots/exp1/'
+)
+
+# Step 3: Evaluate model
+evaluator = EEGEvaluator(model_path='./models/exp1/eegnet_final.pth')
+results = evaluator.evaluate(
+    test_data_path='./eeg_data/fif_files/',
+    metrics=['accuracy', 'f1', 'confusion_matrix']
+)
+evaluator.save_results(results, './results/exp1/')
+```
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+MIT
